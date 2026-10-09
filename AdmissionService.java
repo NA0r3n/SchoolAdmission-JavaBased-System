@@ -18,14 +18,13 @@ public class AdmissionService {
         
         greatStudents();
     }
+    
+    public void greatStudents(){
+        registerNewStudent("Nerwen Angelo C. Ogardo",18,"makati","0912345678","TNCHS","BSCS",93);
+        registerNewStudent("Samantha Angela Y. Sabino",18,"45 Mabini Avenue, Barangay Poblacion, Santa Rosa, Laguna 4026, Philippines","09786642936",
+"Pateros Catholic School","BSCS",99);
+    } //sanaol 99
 
-    private void greatStudents(){
-        // Format: name, age, address, contact, prevSchool, course, gwa
-        registerNewStudent("NAO",18,"taguig","123456789","Enchong Dee University", "BSCS",90);
-        registerNewStudent("Nerwen",18,"makati","123456789","Ben&Ben University", "BSCS",91);
-        registerNewStudent("Angelo",18,"itchy","123456789","No-Sleep University", "BSCS",92);
-        registerNewStudent("Campo NangKa D. Liman",18,"sa ibaba","123456789","Sanaowl University", "BSCS",93);
-    }
     public void addCourse(String courseName, int slots) {
         courseSlots.put(courseName, slots);
         courseTakenSlots.put(courseName, 0);
