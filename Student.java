@@ -17,11 +17,10 @@ public class Student {
         this.studentID = studentID;
         this.fullName = fullName;
         this.courseApplied = courseApplied;
-        this.status = "PENDING";        // FIX: was "this.status = status" (undefined variable)
+        this.status = "PENDING";        
         this.dateAdmitted = LocalDate.now();
     }
 
-    // FIX: renamed from generateStudentID() -> getStudentID()
     public String getStudentID() {
         return studentID;
     }
@@ -69,10 +68,15 @@ public class Student {
         this.age = age;
     }
 
-    // FIX: changed return type String -> void (was always called as void)
     public void setStatus(String newStatus) {
         this.status = newStatus;
     }
+    
+    public void setDateAdmitted(LocalDate date) {
+        if (date != null) {
+            this.dateAdmitted = date;
+        }
+    } 
 
     public boolean isEligibleForHonors() {
         return this.gwa >= 90.0;
