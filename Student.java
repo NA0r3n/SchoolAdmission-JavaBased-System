@@ -62,8 +62,8 @@ public class Student {
     public void setPrevSchool(String prevSchool) { this.prevSchool = prevSchool; }
 
     public void setAge(int age) {
-        if (age < 15 || age > 100) {
-            throw new IllegalArgumentException("Age must be between 15 and 100.");
+        if (age < 17 || age > 100) {
+            throw new IllegalArgumentException("Age must be between 17 and 100.");
         }
         this.age = age;
     }

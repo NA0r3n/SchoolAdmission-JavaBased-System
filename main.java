@@ -40,8 +40,8 @@ public class main {
         input.readLine();
     }
     
-    public static void clearSystem(){
-        System.out.print("\u001B[H\u001B[2J");
+    public static void clearSystem() {
+        System.out.print("\033[H\033[2J");
         System.out.flush();
     }
 
@@ -88,14 +88,19 @@ public class main {
                         if (isValidName(firstName)) break;
                         System.out.println("Invalid name! No digits or symbols allowed.\n");
                     }
+                    
                     clearSystem();
                     String middleName = "";
-                    while (true) {
-                        System.out.print("Enter Middle Name: ");
-                        middleName = input.readLine();
-                        if (isValidName(middleName)) break;
-                        System.out.println("Invalid name! No digits or symbols allowed.\n");
+                    System.out.print("Enter Middle Name (press Enter if none): ");
+                    middleName = input.readLine().trim();
+                    if (!middleName.isBlank()) {
+                        while (!isValidName(middleName)) {
+                            System.out.println("Invalid name! No digits or symbols allowed.");
+                            System.out.print("Enter Middle Name (press Enter if none): ");
+                            middleName = input.readLine().trim();
+                        }
                     }
+                    
                     clearSystem();
                     String lastName = "";
                     while (true) {
@@ -105,38 +110,48 @@ public class main {
                         System.out.println("Invalid name! No digits or symbols allowed.\n");
                     }
 
-                    String fullName = capitalizeName(firstName) + " "
-                                    + capitalizeName(middleName) + " "
-                                    + capitalizeName(lastName);
+                    StringBuilder fullNameBuilder = new StringBuilder();
+                    fullNameBuilder.append(capitalizeName(firstName));
+                    
+                    if (!middleName.isBlank()) {
+                        String middleInitial = middleName.trim().substring(0, 1).toUpperCase() + ".";
+                        fullNameBuilder.append(" ").append(middleInitial);
+                    }
+                    
+                    fullNameBuilder.append(" ").append(capitalizeName(lastName));
+                    String fullName = fullNameBuilder.toString();
+                    
                     clearSystem();
                     int age = 0;
                     while (true) {
                         try {
                             System.out.print("\nEnter Age: ");
                             age = Integer.parseInt(input.readLine());
-                            if (age > 0) break;
-                            System.out.println("Age must be positive.");
+                      if (age > 0 && age > 17) break;
+                            System.out.println("Age must be positive and between 17 to 100");
                         } catch (NumberFormatException e) {
                             System.out.println("Please enter a valid number.");
                         }
                     }
+                
                     clearSystem();
                     System.out.print("\nEnter Address: ");
                     String address = input.readLine();
-                    clearSystem();
                     
+                    clearSystem();
                     String contact = "";
                      while (true) {
-                         System.out.print("\nEnter Contact No (11 digits, Ex: '09...''): ");
+                         System.out.print("\nEnter Contact No (11 digits, Ex: '09...'): ");
                          contact = input.readLine().trim();
                          if (isValidContact(contact)) break;
-                         System.out.println("Invalid contact! Must be exactly 11 digits. starting with '09...'\n");
+                         System.out.println("Invalid contact! Must be exactly 11 digits starting with '09...'\n");
                      }
+                
                     clearSystem();
                     System.out.print("\nEnter Previous School: ");
                     String prevSchool = input.readLine();
-                    clearSystem();
                     
+                    clearSystem();
                     System.out.println("\n--- Available Courses ---");
                     List<String> courseList = service.getAllCourses();
                     for (int i = 0; i < courseList.size(); i++) {
@@ -172,11 +187,12 @@ public class main {
                             System.out.println("Please enter a valid number.");
                         }
                     }
-                    clearSystem();
+                
                     Student savedStudent = service.registerNewStudent(
                         fullName, age, address, contact, prevSchool, courseApplied, gwa
                     );
                     
+                    clearSystem();
                     if (savedStudent != null) {
                         String message = String.format("""
             %nRecord Added Successfully:
@@ -194,7 +210,7 @@ public class main {
             savedStudent.getStatus(),
             savedStudent.getDateAdmitted(),
             savedStudent.getStudentID());
-                        clearSystem();
+                      
                         System.out.println(message);
                     }
                     pause(input);
@@ -217,29 +233,43 @@ public class main {
                             System.out.printf("   Date:    %s%n", s.getDateAdmitted());
                             System.out.println("   ───────────────────────────");
                         }
-                    }
-                    System.out.println("═══════════════════════════════");
+                    
+                      System.out.println("\nregisterNewStudent(");
+                      System.out.println("  type String Full name,");
+                      System.out.println("  type int age,");       System.out.println("  type String Address,");
+                      System.out.println("  type String Contact No.,"); 
+                      System.out.println("  type String Course");
+                      System.out.println("  type double GWA");
+                      System.out.println(");\n");
+                    
+                      System.out.println("═══════════════════════════════");
                     pause(input);
                     break;
-               
+                    }
+                
                 case 3:
                     clearSystem();
                     System.out.println("\n--- Search Student ---");
                     System.out.print("Enter Student ID to search: ");
                     String searchId = input.readLine();
                     Student studentFound = service.searchByID(searchId);
+                    clearSystem();
                     if (studentFound != null) {
                         System.out.printf("""
     %nStudent Record Found:
     ──────────────────────────────
-      Name:   %s
-      Course: %s
-      GWA:    %.2f
-      Date:   %s
-      Status: %s
-      ID:     %s
+      Name:     %s
+      Address:  %s
+      Contact:  %s
+      Course:   %s
+      GWA:      %.2f
+      Date:     %s
+      Status:   %s
+      ID:       %s
     ──────────────────────────────""",
     studentFound.getFullName(),
+    studentFound.getAddress(),
+    studentFound.getContact(),
     studentFound.getCourseApplied(),
     studentFound.getGrades(),
     studentFound.getDateAdmitted(),
@@ -260,6 +290,7 @@ public class main {
                     System.out.print("Enter new status: ");
                     String newStatus = input.readLine();
                     
+                    clearSystem();
                     boolean updated = service.updateStudentStatus(updateId, newStatus);
                     if (updated) {
                         Student updatedStudent = service.searchByID(updateId);
@@ -283,6 +314,7 @@ public class main {
                         System.out.print("Are you sure you want to delete " + 
                                          studentToDelete.getFullName() + "? (y/n): ");
                         String confirm = input.readLine();
+                        clearSystem();
                         if (confirm.equalsIgnoreCase("y")) {
                             boolean deleted = service.deleteStudent(deleteId);
                             if (deleted) {
@@ -292,6 +324,7 @@ public class main {
                             System.out.println("Deletion cancelled.");
                         }
                     } else {
+                        clearSystem();
                         System.out.println("\nStudent not found.");
                     }
                     pause(input);
@@ -319,6 +352,7 @@ public class main {
                     break;
                 
                 case 8:
+                    clearSystem();
                     System.out.println("\n\nExiting system. Goodbye!");
                     long exitTime = System.nanoTime();
         
