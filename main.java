@@ -4,373 +4,455 @@ import java.util.List;
 import java.util.Map;
 
 public class main {
-    public static boolean isValidName(String fullName) {
-        if (fullName == null || fullName.isBlank()) {
-            return false;
-        }
-        return fullName.trim().matches("^[a-zA-Z\\s'-]+$");
+
+    public static boolean isValidName(String name) {
+        return name != null && !name.isBlank() && name.trim().matches("^[a-zA-Z\\s'-]+$");
     }
-    
+
     public static boolean isValidContact(String contact) {
-         if (contact == null || contact.isBlank()) {
-             return false;
-         }
-         return contact.trim().matches("^09\\d{9}$");
+        return contact != null && contact.trim().matches("^09\\d{9}$");
     }
-    
+
     public static String capitalizeName(String text) {
-        if (text == null || text.isBlank()) return text;
-        
-        String[] words = text.trim().split("\\s+");
-        StringBuilder result = new StringBuilder();
-        
-        for (String word : words) {
-            if (!word.isBlank()) {
-                String capitalized = word.substring(0, 1).toUpperCase() 
-                                   + word.substring(1).toLowerCase();
-                result.append(capitalized).append(" ");
-            }
+        if (text == null || text.isBlank()) {
+            return text;
         }
-        
+        StringBuilder result = new StringBuilder();
+        String[] words = text.trim().split("\\s+");
+        for (String word : words) {
+            result.append(word.substring(0, 1).toUpperCase())
+                  .append(word.substring(1).toLowerCase())
+                  .append(" ");
+        }
         return result.toString().trim();
     }
 
     public static void pause(BufferedReader input) throws Exception {
-        System.out.print("\nPress Enter to continue...");
+        System.out.println("\n");
+        System.out.println("---------------------------------------");
+        System.out.print("Press Enter to continue...");
         input.readLine();
     }
-    
-    public static void clearSystem() {
+
+    public static void clearScreen() {
         System.out.print("\033[H\033[2J");
         System.out.flush();
     }
 
     public static void main(String[] args) throws Exception {
-        long startSystem = System.nanoTime();
         AdmissionService service = new AdmissionService();
         BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
-        
         boolean running = true;
-        
-        while (running) {
-            clearSystem();
-            System.out.printf("%n%35s%n", "=== University Of Makati ===");
-            System.out.printf("%30s%n%n", "Admission System");
 
-            System.out.println("   [1] Add Student Record");
-            System.out.println("   [2] View All Students");
-            System.out.println("   [3] Search Student");
-            System.out.println("   [4] Update Student Status");
-            System.out.println("   [5] Delete Student Record");
-            System.out.println("   [6] Course Summary");
-            System.out.println("   [7] Admission Reports");
-            System.out.println("   [8] Exit");
-            System.out.print("\nEnter choice: ");
-            
+        while (running) {
+            clearScreen();
+            System.out.println("=====================================");
+            System.out.println("     UNIVERSITY OF MAKATI            ");
+            System.out.println("        Admission System             ");
+            System.out.println("=====================================");
+            System.out.println();
+            System.out.println("[1] Register New Student");
+            System.out.println("[2] View All Students");
+            System.out.println("[3] Search Student");
+            System.out.println("[4] Update Student Status");
+            System.out.println("[5] Delete Student Record");
+            System.out.println("[6] Course Summary");
+            System.out.println("[7] Admission Reports");
+            System.out.println("[8] Exit");
+            System.out.println();
+            System.out.print("Enter choice: ");
+
             int choice;
             try {
                 choice = Integer.parseInt(input.readLine());
             } catch (NumberFormatException e) {
-                System.out.println("\nPlease enter a valid number.");
+                System.out.println("\nInvalid input. Please enter a number.");
                 pause(input);
                 continue;
             }
-            
+
             switch (choice) {
                 case 1:
-                    clearSystem();
-                    System.out.println("\n--- New Student Admission ---");
-                    
-                    String firstName = "";
-                    while (true) {
-                        System.out.print("Enter First Name: ");
+                    clearScreen();
+                    System.out.println("=====================================");
+                    System.out.println("       NEW STUDENT REGISTRATION      ");
+                    System.out.println("=====================================");
+                    System.out.println();
+
+                    System.out.print("First Name: ");
+                    String firstName = input.readLine();
+                    while (!isValidName(firstName)) {
+                        System.out.print("Invalid name. Enter First Name: ");
                         firstName = input.readLine();
-                        if (isValidName(firstName)) break;
-                        System.out.println("Invalid name! No digits or symbols allowed.\n");
                     }
-                    
-                    clearSystem();
-                    String middleName = "";
-                    System.out.print("Enter Middle Name (press Enter if none): ");
-                    middleName = input.readLine().trim();
+
+                    System.out.print("Middle Name (press Enter if none): ");
+                    String middleName = input.readLine().trim();
                     if (!middleName.isBlank()) {
                         while (!isValidName(middleName)) {
-                            System.out.println("Invalid name! No digits or symbols allowed.");
-                            System.out.print("Enter Middle Name (press Enter if none): ");
+                            System.out.print("Invalid name. Enter Middle Name: ");
                             middleName = input.readLine().trim();
                         }
                     }
-                    
-                    clearSystem();
-                    String lastName = "";
-                    while (true) {
-                        System.out.print("Enter Last Name: ");
+
+                    System.out.print("Last Name: ");
+                    String lastName = input.readLine();
+                    while (!isValidName(lastName)) {
+                        System.out.print("Invalid name. Enter Last Name: ");
                         lastName = input.readLine();
-                        if (isValidName(lastName)) break;
-                        System.out.println("Invalid name! No digits or symbols allowed.\n");
                     }
 
                     StringBuilder fullNameBuilder = new StringBuilder();
                     fullNameBuilder.append(capitalizeName(firstName));
-                    
                     if (!middleName.isBlank()) {
-                        String middleInitial = middleName.trim().substring(0, 1).toUpperCase() + ".";
-                        fullNameBuilder.append(" ").append(middleInitial);
+                        fullNameBuilder.append(" ").append(middleName.trim().charAt(0)).append(".");
                     }
-                    
                     fullNameBuilder.append(" ").append(capitalizeName(lastName));
                     String fullName = fullNameBuilder.toString();
-                    
-                    clearSystem();
-                    int age = 0;
+
+                    int age;
+                
                     while (true) {
+                        System.out.print("Age: ");
                         try {
-                            System.out.print("\nEnter Age: ");
                             age = Integer.parseInt(input.readLine());
-                      if (age > 0 && age > 17) break;
-                            System.out.println("Age must be positive and between 17 to 100");
-                        } catch (NumberFormatException e) {
-                            System.out.println("Please enter a valid number.");
-                        }
-                    }
-                
-                    clearSystem();
-                    System.out.print("\nEnter Address: ");
-                    String address = input.readLine();
-                    
-                    clearSystem();
-                    String contact = "";
-                     while (true) {
-                         System.out.print("\nEnter Contact No (11 digits, Ex: '09...'): ");
-                         contact = input.readLine().trim();
-                         if (isValidContact(contact)) break;
-                         System.out.println("Invalid contact! Must be exactly 11 digits starting with '09...'\n");
-                     }
-                
-                    clearSystem();
-                    System.out.print("\nEnter Previous School: ");
-                    String prevSchool = input.readLine();
-                    
-                    clearSystem();
-                    System.out.println("\n--- Available Courses ---");
-                    List<String> courseList = service.getAllCourses();
-                    for (int i = 0; i < courseList.size(); i++) {
-                        System.out.printf("   [%d] %s%n", i + 1, courseList.get(i));
-                    }
-                    
-                    int courseChoice;
-                    String courseApplied = "";
-                    while (true) {
-                        System.out.print("\nEnter course number: ");
-                        try {
-                            courseChoice = Integer.parseInt(input.readLine());
-                            if (courseChoice >= 1 && courseChoice <= courseList.size()) {
-                                courseApplied = courseList.get(courseChoice - 1);
+                            if (age > 0 && age <= 100) {
                                 break;
-                            } else {
-                                System.out.println("Please enter a valid course number.");
                             }
+                            System.out.println("Please enter a valid age between 1 and 100.");
                         } catch (NumberFormatException e) {
-                            System.out.println("Please enter a number.");
+                            System.out.println("Invalid input. Please enter a number.");
                         }
                     }
+
+                    System.out.print("Complete Address: ");
+                    String address = input.readLine();
+
+                    System.out.print("Contact Number (start with 09, 11 digits): ");
+                    String contact = input.readLine().trim();
+                    while (!isValidContact(contact)) {
+                        System.out.print("Invalid contact. Enter again: ");
+                        contact = input.readLine().trim();
+                    }
+
+                    System.out.print("Previous School: ");
+                    String prevSchool = input.readLine();
+
+                    System.out.println("-------------------------------------");
+                    System.out.println("            YEAR LEVEL               ");
+                    System.out.println("-------------------------------------");
+                    System.out.println("[1] 1st Year");
+                    System.out.println("[2] 2nd Year");
+                    System.out.println("[3] 3rd Year");
+                    System.out.println("[4] 4th Year");
                     
-                    clearSystem();
-                    double gwa = 0.0;
+                    int yearChoice;
                     while (true) {
+                        System.out.print("Enter choice: ");
                         try {
-                            System.out.print("\nEnter GWA (0.0 - 100.0): ");
-                            gwa = Double.parseDouble(input.readLine());
-                            if (gwa >= 0.0 && gwa <= 100.0) break;
-                            System.out.println("GWA must be between 0 and 100.");
+                            yearChoice = Integer.parseInt(input.readLine());
+                            if (yearChoice >= 1 && yearChoice <= 4) {
+                                break;
+                            }
+                            System.out.println("Please enter a number between 1 and 4.");
                         } catch (NumberFormatException e) {
                             System.out.println("Please enter a valid number.");
                         }
                     }
-                
-                    Student savedStudent = service.registerNewStudent(
-                        fullName, age, address, contact, prevSchool, courseApplied, gwa
-                    );
+                    YearLevel yearLevel = YearLevel.values()[yearChoice - 1];
+                    System.out.println();
+
+                    System.out.println("-------------------------------------");
+                    System.out.println("           SELECT COLLEGE            ");
+                    System.out.println("-------------------------------------");
+                    List<College> colleges = service.getAllColleges();
+                    for (int i = 0; i < colleges.size(); i++) {
+                        System.out.printf("[%d] %s - %s%n", i + 1, colleges.get(i), colleges.get(i).fullName);
+                    }
                     
-                    clearSystem();
-                    if (savedStudent != null) {
-                        String message = String.format("""
-            %nRecord Added Successfully:
-            ──────────────────────────────
-              Name:   %s
-              Course: %s
-              GWA:    %.2f
-              Status: %s
-              Date:   %s
-              ID:     %s
-            ──────────────────────────────""",
-            savedStudent.getFullName(),
-            savedStudent.getCourseApplied(),
-            savedStudent.getGrades(),
-            savedStudent.getStatus(),
-            savedStudent.getDateAdmitted(),
-            savedStudent.getStudentID());
-                      
-                        System.out.println(message);
+                    int collegeIndex;
+                    while (true) {
+                        System.out.print("Enter college number: ");
+                        try {
+                            int inputNum = Integer.parseInt(input.readLine());
+                            collegeIndex = inputNum - 1;
+                            if (collegeIndex >= 0 && collegeIndex < colleges.size()) {
+                                break;
+                            }
+                            System.out.println("Please enter a number between 1 and " + colleges.size() + ".");
+                        } catch (NumberFormatException e) {
+                            System.out.println("Please enter a valid number.");
+                        }
+                    }
+                    College selectedCollege = colleges.get(collegeIndex);
+                    System.out.println();
+
+                    System.out.println("-------------------------------------");
+                    System.out.println("  COURSES IN " + selectedCollege);
+                    System.out.println("-------------------------------------");
+                    List<String> courses = service.getCoursesByCollege(selectedCollege);
+                    for (int i = 0; i < courses.size(); i++) {
+                        CourseRequirement req = service.getCourseRequirement(courses.get(i));
+                        System.out.printf("[%d] %s (Min GWA: %.1f)%n", i + 1, courses.get(i), req.getMinGWA());
+                    }
+                    
+                    int courseIndex;
+                    while (true) {
+                        System.out.print("Enter course number: ");
+                        try {
+                            int inputNum = Integer.parseInt(input.readLine());
+                            courseIndex = inputNum - 1;
+                            if (courseIndex >= 0 && courseIndex < courses.size()) {
+                                break;
+                            }
+                            System.out.println("Please enter a number between 1 and " + courses.size() + ".");
+                        } catch (NumberFormatException e) {
+                            System.out.println("Please enter a valid number.");
+                        }
+                    }
+                    String courseApplied = courses.get(courseIndex);
+
+                    System.out.print("General Weighted Average (GWA): ");
+                                        double gwa;
+                    while (true) {
+                        System.out.print("General Weighted Average (GWA): ");
+                        try {
+                            gwa = Double.parseDouble(input.readLine());
+                            if (gwa >= 0.0 && gwa <= 99.9) {
+                                break;
+                            }
+                            System.out.println("Please enter a valid GWA between 0.0 and 99.9.");
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid input. Please enter a number.");
+                        }
+                    }
+                    clearScreen();
+                    System.out.println("-------------------------------------\n\n");
+                    Student newStudent = service.registerNewStudent(fullName, age, address, contact,
+                            prevSchool, courseApplied, gwa, yearLevel);
+
+                    System.out.println("-------------------------------------\n\n");
+                
+                    if (newStudent != null) {
+                        System.out.println("=====================================");
+                        System.out.println("        STUDENT REGISTERED           ");
+                        System.out.println("=====================================");
+                        System.out.println();
+                        System.out.println("Student ID: " + newStudent.getStudentID());
+                        System.out.println("Name:       " + newStudent.getFullName());
+                        System.out.println("Year Level: " + newStudent.getYearLevel().displayName);
+                        System.out.println("Course:     " + newStudent.getCourseApplied());
+                        System.out.println("GWA:        " + newStudent.getGrades());
+                        System.out.println("Status:     " + newStudent.getStatus());
+                        System.out.println("Date:       " + newStudent.getDateAdmitted());
+                        System.out.println();
                     }
                     pause(input);
                     break;
-                    
+
                 case 2:
-                    clearSystem();
-                    System.out.println("\n----- All Students ------");
-                    System.out.println("═══════════════════════════════");
-                     
+                    clearScreen();
+                    System.out.println("=====================================");
+                    System.out.println("          ALL STUDENTS               ");
+                    System.out.println("=====================================");
+                    System.out.println();
+                    
                     List<Student> allStudents = service.getAllStudents();
                     if (allStudents.isEmpty()) {
-                        System.out.println("   No students registered yet.");
+                        System.out.println("       No student records found.");
                     } else {
                         for (Student s : allStudents) {
-                            System.out.printf("   ID:      %s%n", s.getStudentID());
-                            System.out.printf("   Name:    %s%n", s.getFullName());
-                            System.out.printf("   Course:  %s%n", s.getCourseApplied());
-                            System.out.printf("   Status:  %s%n", s.getStatus());
-                            System.out.printf("   Date:    %s%n", s.getDateAdmitted());
-                            System.out.println("   ───────────────────────────");
+                            System.out.println("-------------------------------------");
+                            System.out.println("ID:         " + s.getStudentID());
+                            System.out.println("Name:       " + s.getFullName());
+                            System.out.println("Year Level: " + s.getYearLevel().displayName);
+                            System.out.println("Course:     " + s.getCourseApplied());
+                            System.out.println("GWA:        " + s.getGrades());
+                            System.out.println("Status:     " + s.getStatus());
+                            System.out.println("Date:       " + s.getDateAdmitted());
                         }
-                    
-                      System.out.println("\nregisterNewStudent(");
-                      System.out.println("  type String Full name,");
-                      System.out.println("  type int age,");       System.out.println("  type String Address,");
-                      System.out.println("  type String Contact No.,"); 
-                      System.out.println("  type String Course");
-                      System.out.println("  type double GWA");
-                      System.out.println(");\n");
-                    
-                      System.out.println("═══════════════════════════════");
+                        System.out.println("-------------------------------------");
+                    }
                     pause(input);
                     break;
-                    }
-                
+
                 case 3:
-                    clearSystem();
-                    System.out.println("\n--- Search Student ---");
-                    System.out.print("Enter Student ID to search: ");
-                    String searchId = input.readLine();
-                    Student studentFound = service.searchByID(searchId);
-                    clearSystem();
-                    if (studentFound != null) {
-                        System.out.printf("""
-    %nStudent Record Found:
-    ──────────────────────────────
-      Name:     %s
-      Address:  %s
-      Contact:  %s
-      Course:   %s
-      GWA:      %.2f
-      Date:     %s
-      Status:   %s
-      ID:       %s
-    ──────────────────────────────""",
-    studentFound.getFullName(),
-    studentFound.getAddress(),
-    studentFound.getContact(),
-    studentFound.getCourseApplied(),
-    studentFound.getGrades(),
-    studentFound.getDateAdmitted(),
-    studentFound.getStatus(),
-    studentFound.getStudentID());
-                    } else {
-                        System.out.println("\nStudent not found.");
-                    }
-                    pause(input);
-                    break;
-                
-                case 4:
-                    clearSystem();
-                    System.out.println("\n--- Update Student Status ---");
-                    System.out.print("Enter Existing Student ID: ");
-                    String updateId = input.readLine();
+                    clearScreen();
+                    System.out.println("=====================================");
+                    System.out.println("         SEARCH STUDENT              ");
+                    System.out.println("=====================================");
+                    System.out.println();
+                    System.out.println("[1] Search by ID");
+                    System.out.println("[2] Search by Name");
+                    System.out.println();
                     
-                    System.out.print("Enter new status: ");
-                    String newStatus = input.readLine();
-                    
-                    clearSystem();
-                    boolean updated = service.updateStudentStatus(updateId, newStatus);
-                    if (updated) {
-                        Student updatedStudent = service.searchByID(updateId);
-                        System.out.println("\nSuccessfully updated.");
-                        System.out.println("   " + updatedStudent.getFullName());
-                        System.out.println("   " + updatedStudent.getStudentID() + " - Status: " + updatedStudent.getStatus());
-                    } else {
-                        System.out.println("\nStudent not found.");
-                    }
-                    pause(input);
-                    break;
-                
-                case 5:
-                    clearSystem();
-                    System.out.println("\n--- Delete Student Record ---");
-                    System.out.print("Enter Existing Student ID: ");
-                    String deleteId = input.readLine();
-                    
-                    Student studentToDelete = service.searchByID(deleteId);
-                    if (studentToDelete != null) {
-                        System.out.print("Are you sure you want to delete " + 
-                                         studentToDelete.getFullName() + "? (y/n): ");
-                        String confirm = input.readLine();
-                        clearSystem();
-                        if (confirm.equalsIgnoreCase("y")) {
-                            boolean deleted = service.deleteStudent(deleteId);
-                            if (deleted) {
-                                System.out.println("Successfully deleted.");
+                    int searchChoice;
+                    while (true) {
+                        System.out.print("Enter choice: ");
+                        try {
+                            searchChoice = Integer.parseInt(input.readLine());
+                            if (searchChoice == 1 || searchChoice == 2) {
+                                break;
                             }
+                            System.out.println("Please enter 1 or 2.");
+                        } catch (NumberFormatException e) {
+                            System.out.println("Please enter a valid number.");
+                        }
+                    }
+                    System.out.println();
+
+                    if (searchChoice == 1) {
+                        System.out.print("Enter Student ID: ");
+                        String id = input.readLine().trim();
+                        Student found = service.searchByID(id);
+                        System.out.println();
+                        if (found != null) {
+                            System.out.println("-------------------------------------");
+                            System.out.println("ID:         " + found.getStudentID());
+                            System.out.println("Name:       " + found.getFullName());
+                            System.out.println("Year Level: " + found.getYearLevel().displayName);
+                            System.out.println("Address:    " + found.getAddress());
+                            System.out.println("Contact:    " + found.getContact());
+                            System.out.println("Course:     " + found.getCourseApplied());
+                            System.out.println("GWA:        " + found.getGrades());
+                            System.out.println("Status:     " + found.getStatus());
+                            System.out.println("-------------------------------------");
                         } else {
-                            System.out.println("Deletion cancelled.");
+                            System.out.println("       Student not found.");
                         }
                     } else {
-                        clearSystem();
-                        System.out.println("\nStudent not found.");
+                        System.out.print("Enter name keyword: ");
+                        String keyword = input.readLine().trim();
+                        List<Student> results = service.searchByName(keyword);
+                        System.out.println();
+                        if (results.isEmpty()) {
+                            System.out.println("    No matching students found.");
+                        } else {
+                            System.out.println("    Found " + results.size() + " student(s):");
+                            System.out.println("-------------------------------------");
+                            for (Student s : results) {
+                                System.out.println(s.getStudentID() + "  |  " 
+                                        + s.getFullName() + "  |  " + s.getStatus());
+                            }
+                            System.out.println("-------------------------------------");
+                        }
                     }
                     pause(input);
                     break;
-                
+
+                case 4:
+                    clearScreen();
+                    System.out.println("=====================================");
+                    System.out.println("        UPDATE STUDENT STATUS        ");
+                    System.out.println("=====================================");
+                    System.out.println();
+                    System.out.print("Enter Student ID: ");
+                    String updateId = input.readLine().trim();
+                    Student studentToUpdate = service.searchByID(updateId);
+                    System.out.println();
+                    
+                    if (studentToUpdate == null) {
+                        System.out.println("       Student not found.");
+                    } else {
+                        System.out.println("-------------------------------------");
+                        System.out.println("Student:      " + studentToUpdate.getFullName());
+                        System.out.println("Current ID:   " + studentToUpdate.getStudentID());
+                        System.out.println("Old Status:   " + studentToUpdate.getStatus());
+                        System.out.println("-------------------------------------");
+                        System.out.println();
+                        System.out.println("Available statuses:");
+                        System.out.println("  APPROVED  |  PENDING  |  REJECTED  |  WAITLISTED");
+                        System.out.println();
+                        System.out.print("Enter new status: ");
+                        String newStatus = input.readLine().trim().toUpperCase();
+                        boolean updated = service.updateStudentStatus(updateId, newStatus);
+                        System.out.println();
+                        if (updated) {
+                            System.out.println("    Status updated successfully.");
+                        } else {
+                            System.out.println("    Update failed. Course may be at full capacity.");
+                        }
+                    }
+                    pause(input);
+                    break;
+
+                case 5:
+                    clearScreen();
+                    System.out.println("=====================================");
+                    System.out.println("       DELETE STUDENT RECORD         ");
+                    System.out.println("=====================================");
+                    System.out.println();
+                    System.out.print("Enter Student ID: ");
+                    String deleteId = input.readLine().trim();
+                    Student studentToDelete = service.searchByID(deleteId);
+                    System.out.println();
+                    
+                    if (studentToDelete == null) {
+                        System.out.println("       Student not found.");
+                    } else {
+                        System.out.println("-------------------------------------");
+                        System.out.println("Student: " + studentToDelete.getFullName());
+                        System.out.println("Status:  " + studentToDelete.getStatus());
+                        System.out.println("Course:  " + studentToDelete.getCourseApplied());
+                        System.out.println("-------------------------------------");
+                        System.out.println();
+                        System.out.print("Are you sure you want to delete? (y/n): ");
+                        String confirm = input.readLine().trim();
+                        System.out.println();
+                        if (confirm.equalsIgnoreCase("y")) {
+                            service.deleteStudent(deleteId);
+                            System.out.println("    Record deleted successfully.");
+                        } else {
+                            System.out.println("    Deletion cancelled.");
+                        }
+                    }
+                    pause(input);
+                    break;
+
                 case 6:
-                    clearSystem();
-                    System.out.println("\n--- Course Summary ---");
+                    clearScreen();
+                    System.out.println("=====================================");
+                    System.out.println("         COURSE SUMMARY              ");
+                    System.out.println("=====================================");
+                    System.out.println();
                     Map<String, Integer> summary = service.getCourseSummary();
                     for (Map.Entry<String, Integer> entry : summary.entrySet()) {
-                        System.out.println("   " + entry.getKey() + " : " + entry.getValue() + " slots available");
+                        System.out.printf("%3d slots available  |  %s%n", entry.getValue(), entry.getKey());
                     }
                     pause(input);
                     break;
-                
+
                 case 7:
-                    clearSystem();
-                    System.out.println("\n--- Admission Reports ---");
-                    System.out.println("   Total Applicants: " + service.getTotalApplicants());
-                    System.out.println("   APPROVED:   " + service.getCountByStatus("APPROVED"));
-                    System.out.println("   REJECTED:   " + service.getCountByStatus("REJECTED"));
-                    System.out.println("   WAITLISTED: " + service.getCountByStatus("WAITLISTED"));
-                    System.out.println("   PENDING:    " + service.getCountByStatus("PENDING"));
+                    clearScreen();
+                    System.out.println("=====================================");
+                    System.out.println("        ADMISSION REPORTS            ");
+                    System.out.println("=====================================");
+                    System.out.println();
+                    System.out.println("Total Applicants: " + service.getTotalApplicants());
+                    System.out.println("-------------------------------------");
+                    System.out.printf("%-12s : %d%n", "APPROVED", service.getCountByStatus("APPROVED"));
+                    System.out.printf("%-12s : %d%n", "PENDING", service.getCountByStatus("PENDING"));
+                    System.out.printf("%-12s : %d%n", "REJECTED", service.getCountByStatus("REJECTED"));
+                    System.out.printf("%-12s : %d%n", "WAITLISTED", service.getCountByStatus("WAITLISTED"));
+                    System.out.println("-------------------------------------");
                     pause(input);
                     break;
-                
+
                 case 8:
-                    clearSystem();
-                    System.out.println("\n\nExiting system. Goodbye!");
-                    long exitTime = System.nanoTime();
-        
-                    long timeInMS = (exitTime - startSystem) / 1_000_000;
-                    double timeInSec = timeInMS / 1000.0;
-                 
-                    System.out.printf("%n──────────────────────────────────────");
-                    System.out.printf("%nSession Duration: %d ms (%.3f seconds)", timeInMS, timeInSec);
-                    System.out.printf("%n──────────────────────────────────────%n");
-                    pause(input);                   
+                    clearScreen();
+                    System.out.println("=====================================");
+                    System.out.println("  Thank you for using UMak System!   ");
+                    System.out.println("            Goodbye.                 ");
+                    System.out.println("=====================================");
                     running = false;
                     break;
-                     
+
                 default:
-                    System.out.println("\nInvalid choice! Please try again.");
+                    System.out.println("\nInvalid choice. Please try again.");
                     pause(input);
                     break;
-            }           
+            }
         }
+        input.close();
     }
 }
