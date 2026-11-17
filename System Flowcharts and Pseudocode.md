@@ -7,23 +7,23 @@ This diagram illustrates how the six `.java` source files interact with one anot
 ```mermaid
 flowchart TD
     subgraph Presentation_Layer ["Presentation / CLI Layer"]
-        MAIN["<b>main.java</b><br/>• Displays CLI menus & prompts<br/>• Validates user input (Regex/Ranges)<br/>• Formats console output"]
+        MAIN["main.java - Displays CLI menus and prompts; validates user input"]
     end
 
-    subgraph Service_Layer ["Business Logic & Persistence Layer"]
-        SERVICE["<b>AdmissionService.java</b><br/>• Evaluates GWA & slot eligibility<br/>• Generates IDs (UMAK-YYYY-XXXX)<br/>• Manages CRUD & slot counts<br/>• Generates reports & CSV exports"]
+    subgraph Service_Layer ["Business Logic and Persistence Layer"]
+        SERVICE["AdmissionService.java - Evaluates GWA and slot eligibility; generates IDs and manages CSV I/O"]
     end
 
-    subgraph Domain_Models ["Domain Models & Enums"]
-        STUDENT["<b>Student.java</b><br/>• Stores applicant attributes<br/>• Getters & Setters"]
-        COURSEREQ["<b>CourseRequirement.java</b><br/>• Stores minGWA & max slots<br/>• Links Course to College"]
-        COLLEGE["<b>College.java (Enum)</b><br/>• 11 UMak Colleges<br/>• Acronym & fullName"]
-        YEAR["<b>YearLevel.java (Enum)</b><br/>• FIRST_YEAR to FOURTH_YEAR<br/>• displayName"]
+    subgraph Domain_Models ["Domain Models and Enums"]
+        STUDENT["Student.java - Stores applicant attributes with getters and setters"]
+        COURSEREQ["CourseRequirement.java - Stores minGWA and max slots; links Course to College"]
+        COLLEGE["College.java Enum - 11 UMak Colleges with Acronym and fullName"]
+        YEAR["YearLevel.java Enum - FIRST_YEAR to FOURTH_YEAR with displayName"]
     end
 
-    subgraph Storage_Layer ["File Storage (CSV)"]
-        CSV_DB[("<b>students.csv</b><br/>Persistent Student Database")]
-        CSV_REP[("<b>Admission_Report.csv</b><br/>Exported Analytics Report")]
+    subgraph Storage_Layer ["File Storage CSV"]
+        CSV_DB[("students.csv - Persistent Student Database")]
+        CSV_REP[("Admission_Report.csv - Exported Analytics Report")]
     end
 
     MAIN -->|"Calls service methods"| SERVICE
@@ -32,8 +32,8 @@ flowchart TD
     MAIN -.->|"Displays data from"| STUDENT
     MAIN -.->|"Checks minGWA from"| COURSEREQ
 
-    SERVICE -->|"Creates & manages list of"| STUDENT
-    SERVICE -->|"Maps & enforces rules via"| COURSEREQ
+    SERVICE -->|"Creates and manages list of"| STUDENT
+    SERVICE -->|"Maps and enforces rules via"| COURSEREQ
     COURSEREQ -->|"Categorized by"| COLLEGE
     STUDENT -->|"Assigned"| YEAR
 
@@ -49,28 +49,29 @@ This flowchart details the runtime lifecycle from program startup through menu s
 
 ```mermaid
 flowchart TD
-    START([Start Program: main]) --> INIT["Instantiate AdmissionService<br/>1. Initialize 31 courses & slot maps<br/>2. Load students.csv (or create sample data)<br/>3. Recalculate taken course slots"]
-    INIT --> MENU{"Display Main Menu<br/>Read User Choice (1-8)"}
+    START(["Program Start: main"]) --> INIT["Instantiate AdmissionService: Initialize 31 courses, load students.csv, recalculate slots"]
+    INIT --> MENU{"Display Main Menu and Read Choice 1-8"}
 
-    MENU -->|Invalid Input| ERR_INPUT["Display Error Message"] --> MENU
-    MENU -->|1: Register| REG_INPUT["Input & Validate Personal Details,<br/>Year Level, College, Course & GWA"]
-    REG_INPUT --> EVAL_GWA{"Is GWA < 75.0?"}
-    EVAL_GWA -->|Yes| STAT_REJ["Status = REJECTED"]
-    EVAL_GWA -->|No| EVAL_MIN{"Is GWA < Course Min GWA?"}
-    EVAL_MIN -->|Yes| STAT_PEN["Status = PENDING"]
-    EVAL_MIN -->|No| EVAL_SLOT{"Are Taken Slots >= Max Slots?"}
-    EVAL_SLOT -->|Yes| STAT_WAIT["Status = WAITLISTED"]
-    EVAL_SLOT -->|No| STAT_APP["Status = APPROVED<br/>Increment Course Taken Slots"]
+    MENU -->|"Invalid Input"| ERR["Display Error Message"] --> MENU
 
-    STAT_REJ & STAT_PEN & STAT_WAIT & STAT_APP --> SAVE_NEW["Generate Student ID<br/>Save to students.csv<br/>Display Receipt"] --> MENU
+    MENU -->|"1: Register"| REG_IN["Input and Validate Personal Details, Year Level, College, Course and GWA"]
+    REG_IN --> CHK_GWA1{"GWA less than 75.0?"}
+    CHK_GWA1 -->|"Yes"| STAT_REJ["Status = REJECTED"]
+    CHK_GWA1 -->|"No"| CHK_GWA2{"GWA less than Course Min GWA?"}
+    CHK_GWA2 -->|"Yes"| STAT_PEN["Status = PENDING"]
+    CHK_GWA2 -->|"No"| CHK_SLOT{"Taken Slots >= Max Slots?"}
+    CHK_SLOT -->|"Yes"| STAT_WAIT["Status = WAITLISTED"]
+    CHK_SLOT -->|"No"| STAT_APP["Status = APPROVED and Increment Taken Slots"]
 
-    MENU -->|2: View All| VIEW_ALL["Fetch all students & print list"] --> MENU
-    MENU -->|3: Search| SEARCH["Search by ID or Name keyword<br/>Display matching records"] --> MENU
-    MENU -->|4: Update Status| UPDATE["Find Student by ID<br/>Verify slot capacity if APPROVED<br/>Adjust slots & save students.csv"] --> MENU
-    MENU -->|5: Delete Record| DELETE["Find Student by ID & confirm<br/>Free slot if APPROVED<br/>Remove & save students.csv"] --> MENU
-    MENU -->|6: Course Summary| SUMMARY["Calculate (Max Slots - Taken Slots)<br/>for all courses & display"] --> MENU
-    MENU -->|7: Admission Reports| REPORT["Calculate totals, counts & yield rate<br/>Optional: Export to Admission_Report.csv"] --> MENU
-    MENU -->|8: Exit| EXIT_PROG([Close Reader & Terminate])
+    STAT_REJ & STAT_PEN & STAT_WAIT & STAT_APP --> SAVE_NEW["Generate Student ID, Save to students.csv, Display Receipt"] --> MENU
+
+    MENU -->|"2: View All"| VIEW["Fetch all students and print list"] --> MENU
+    MENU -->|"3: Search"| SEARCH["Search by ID or Name keyword and display matches"] --> MENU
+    MENU -->|"4: Update Status"| UPDATE["Find Student, verify slot capacity, adjust slots and save CSV"] --> MENU
+    MENU -->|"5: Delete Record"| DELETE["Find Student, confirm, free slot if APPROVED, remove and save CSV"] --> MENU
+    MENU -->|"6: Course Summary"| SUMMARY["Calculate remaining slots for all courses and display"] --> MENU
+    MENU -->|"7: Reports"| REPORT["Calculate totals, counts and yield rate; optional CSV export"] --> MENU
+    MENU -->|"8: Exit"| EXIT(["Close Reader and Terminate"])
 ```
 
 ---
