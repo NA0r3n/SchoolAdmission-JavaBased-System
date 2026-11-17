@@ -48,7 +48,7 @@ public class main {
             clearScreen();
             System.out.println("=====================================");
             System.out.println("     UNIVERSITY OF MAKATI            ");
-            System.out.println("        Admission System             ");
+            System.out.println("         Admission System             ");
             System.out.println("=====================================");
             System.out.println();
             System.out.println("[1] Register New Student");
@@ -111,7 +111,6 @@ public class main {
                     String fullName = fullNameBuilder.toString();
 
                     int age;
-                
                     while (true) {
                         System.out.print("Age: ");
                         try {
@@ -139,13 +138,13 @@ public class main {
                     String prevSchool = input.readLine();
 
                     System.out.println("-------------------------------------");
-                    System.out.println("            YEAR LEVEL               ");
+                    System.out.println("             YEAR LEVEL               ");
                     System.out.println("-------------------------------------");
                     System.out.println("[1] 1st Year");
                     System.out.println("[2] 2nd Year");
                     System.out.println("[3] 3rd Year");
                     System.out.println("[4] 4th Year");
-                    
+
                     int yearChoice;
                     while (true) {
                         System.out.print("Enter choice: ");
@@ -169,7 +168,7 @@ public class main {
                     for (int i = 0; i < colleges.size(); i++) {
                         System.out.printf("[%d] %s - %s%n", i + 1, colleges.get(i), colleges.get(i).fullName);
                     }
-                    
+
                     int collegeIndex;
                     while (true) {
                         System.out.print("Enter college number: ");
@@ -195,7 +194,7 @@ public class main {
                         CourseRequirement req = service.getCourseRequirement(courses.get(i));
                         System.out.printf("[%d] %s (Min GWA: %.1f)%n", i + 1, courses.get(i), req.getMinGWA());
                     }
-                    
+
                     int courseIndex;
                     while (true) {
                         System.out.print("Enter course number: ");
@@ -212,8 +211,7 @@ public class main {
                     }
                     String courseApplied = courses.get(courseIndex);
 
-                    System.out.print("General Weighted Average (GWA): ");
-                                        double gwa;
+                    double gwa;
                     while (true) {
                         System.out.print("General Weighted Average (GWA): ");
                         try {
@@ -232,10 +230,10 @@ public class main {
                             prevSchool, courseApplied, gwa, yearLevel);
 
                     System.out.println("-------------------------------------\n\n");
-                
+
                     if (newStudent != null) {
                         System.out.println("=====================================");
-                        System.out.println("        STUDENT REGISTERED           ");
+                        System.out.println("         STUDENT REGISTERED           ");
                         System.out.println("=====================================");
                         System.out.println();
                         System.out.println("Student ID: " + newStudent.getStudentID());
@@ -256,7 +254,7 @@ public class main {
                     System.out.println("          ALL STUDENTS               ");
                     System.out.println("=====================================");
                     System.out.println();
-                    
+
                     List<Student> allStudents = service.getAllStudents();
                     if (allStudents.isEmpty()) {
                         System.out.println("       No student records found.");
@@ -285,7 +283,7 @@ public class main {
                     System.out.println("[1] Search by ID");
                     System.out.println("[2] Search by Name");
                     System.out.println();
-                    
+
                     int searchChoice;
                     while (true) {
                         System.out.print("Enter choice: ");
@@ -350,7 +348,7 @@ public class main {
                     String updateId = input.readLine().trim();
                     Student studentToUpdate = service.searchByID(updateId);
                     System.out.println();
-                    
+
                     if (studentToUpdate == null) {
                         System.out.println("       Student not found.");
                     } else {
@@ -386,7 +384,7 @@ public class main {
                     String deleteId = input.readLine().trim();
                     Student studentToDelete = service.searchByID(deleteId);
                     System.out.println();
-                    
+
                     if (studentToDelete == null) {
                         System.out.println("       Student not found.");
                     } else {
@@ -424,17 +422,7 @@ public class main {
 
                 case 7:
                     clearScreen();
-                    System.out.println("=====================================");
-                    System.out.println("        ADMISSION REPORTS            ");
-                    System.out.println("=====================================");
-                    System.out.println();
-                    System.out.println("Total Applicants: " + service.getTotalApplicants());
-                    System.out.println("-------------------------------------");
-                    System.out.printf("%-12s : %d%n", "APPROVED", service.getCountByStatus("APPROVED"));
-                    System.out.printf("%-12s : %d%n", "PENDING", service.getCountByStatus("PENDING"));
-                    System.out.printf("%-12s : %d%n", "REJECTED", service.getCountByStatus("REJECTED"));
-                    System.out.printf("%-12s : %d%n", "WAITLISTED", service.getCountByStatus("WAITLISTED"));
-                    System.out.println("-------------------------------------");
+                    service.generateExpandedReport(service.getAllStudents());
                     pause(input);
                     break;
 
@@ -442,7 +430,7 @@ public class main {
                     clearScreen();
                     System.out.println("=====================================");
                     System.out.println("  Thank you for using UMak System!   ");
-                    System.out.println("            Goodbye.                 ");
+                    System.out.println("             Goodbye.                 ");
                     System.out.println("=====================================");
                     running = false;
                     break;
