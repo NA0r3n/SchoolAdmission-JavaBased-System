@@ -71,14 +71,29 @@ Manual admission processing often suffers from slow applicant evaluation, human 
 ---
 
 ## 6. Sample Screenshots
-> *Note: Replace the placeholders below with screenshots from your terminal/IDE running each module.*
+* **Main Menu Module:** `![Main Menu]## 6. Sample Screenshots
 
-* **Main Menu Module:** `![Main Menu](screenshots/main_menu.png)`
-* **Register New Student Module:** `![Register Student](screenshots/register_student.png)`
-* **View All Students Module:** `![View Students](screenshots/view_students.png)`
-* **Search Student Module:** `![Search Student](screenshots/search_student.png)`
-* **Update & Delete Student Modules:** `![Update Delete](screenshots/update_delete.png)`
-* **Course Summary & Admission Reports:** `![Reports](screenshots/reports.png)`
+* **Main Menu Module:**
+  ![Main Menu](screenshots/main_menu.png)
+
+* **Register New Student Module:**
+  ![Register Student](screenshots/register_student.png)
+
+* **View All Students Module:**
+  ![View Students](screenshots/view_students.png)
+
+* **Search Student Module (By ID & By Name):**
+  ![Search Student by ID](screenshots/search_student_id.png)
+  ![Search Student by Name](screenshots/search_student_name.png)
+
+* **Update & Delete Student Modules:**
+  ![Update Student Status](screenshots/update_student.png)
+  ![Delete Student Record](screenshots/delete_student.png)
+
+* **Course Summary & Admission Reports:**
+  ![Course Summary](screenshots/course_summary.png)
+  ![Admission Reports](screenshots/reports.png)
+
 
 ---
 
