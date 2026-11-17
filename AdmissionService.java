@@ -13,6 +13,9 @@ public class AdmissionService {
     public AdmissionService() {
         initializeCourses();
         loadStudentsFromCSV();
+
+        loadSavedChanges();
+        
         if (students.isEmpty()) {
             createSampleStudents();
         }
@@ -284,6 +287,81 @@ public class AdmissionService {
                 System.out.println("[ERROR] Failed to write file: " + e.getMessage());
             }
         }
+    }
+
+    private static final String STUDENT_TXT = "students.txt";
+
+    public boolean saveChanges() {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(STUDENT_TXT))) {
+            pw.println("SEQ|" + rawIDSequence);
+            for (Student s : students) {
+                pw.println(String.join("|",
+                        esc(s.getStudentID()), esc(s.getFullName()),
+                        String.valueOf(s.getAge()), esc(s.getAddress()),
+                        esc(s.getContact()), esc(s.getPrevSchool()),
+                        esc(s.getCourseApplied()), String.valueOf(s.getGrades()),
+                        String.valueOf(s.getYearLevel()), esc(s.getStatus()),
+                        String.valueOf(s.getDateAdmitted())));
+            }
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private void loadSavedChanges() {
+        File file = new File(STUDENT_TXT);
+        if (!file.exists()) return;
+        List<Student> loaded = new ArrayList<>();
+        int seq;
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line = br.readLine();
+            if (line == null || !line.startsWith("SEQ|")) return;
+            seq = Integer.parseInt(line.substring(4).trim());
+            while ((line = br.readLine()) != null) {
+                if (line.isBlank()) continue;
+                List<String> f = splitEscaped(line);
+                if (f.size() != 11) return;
+                Student s = new Student(f.get(0), f.get(1), f.get(6));
+                s.setAge(Integer.parseInt(f.get(2)));
+                s.setAddress(f.get(3));
+                s.setContact(f.get(4));
+                s.setPrevSchool(f.get(5));
+                s.setGrades(Double.parseDouble(f.get(7)));
+                s.setYearLevel(YearLevel.valueOf(f.get(8)));
+                s.setStatus(f.get(9));
+                s.setDateAdmitted(LocalDate.parse(f.get(10)));
+                loaded.add(s);
+            }
+        } catch (Exception e) {
+            return;
+        }
+        students = loaded;
+        rawIDSequence = seq;
+    }
+
+    private static String esc(String text) {
+        if (text == null) return "";
+        return text.replace("\\", "\\\\").replace("|", "\\|").replace("\n", "\\n").replace("\r", "");
+    }
+
+    private static List<String> splitEscaped(String line) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '\\' && i + 1 < line.length()) {
+                char next = line.charAt(++i);
+                cur.append(next == 'n' ? '\n' : next);
+            } else if (c == '|') {
+                fields.add(cur.toString());
+                cur.setLength(0);
+            } else {
+                cur.append(c);
+            }
+        }
+        fields.add(cur.toString());
+        return fields;
     }
 
     private void recalculateSlotCounts() {
