@@ -1,0 +1,10 @@
+studentID,fullName,age,address,contact,prevSchool,courseApplied,gwa,yearLevel,status,dateAdmitted
+UMAK-2026-0001,"Nerwen Angelo C. Ogardo",18,"#78 Block 4 Kalayaan Avenue Barangay West Rembo Taguig City","09760895947","Tanza National Comprehensive ","Bachelor of Science in Computer Science (BSCS)",99.90,FIRST_YEAR,APPROVED,2026-01-23
+UMAK-2026-0002,"Samantha Angela Y. Sabino",18,"45 Mabini Avenue, Barangay Poblacion, Santa Rosa, Laguna 4026","09786642936","Pateros Catholic School","Bachelor of Science in Information Technology (BSIT)",99.90,FIRST_YEAR,APPROVED,2026-01-24
+UMAK-2026-0003,"Ysaiah Myro Siblero",19,"388 Guava Street, Brgy. Pinagsama, Wildcat, Taguig City","09241752369","MCA Montessori School","Bachelor of Science in Computer Science (BSCS)",99.90,FIRST_YEAR,APPROVED,2026-10-23
+UMAK-2026-0004,"Martin Benito E. Viñas",18,"F. Castillo, Project 4, Quezon City","09310230235","University of the East","Bachelor of Science in Computer Science (BSCS)",99.90,FIRST_YEAR,APPROVED,2026-10-23
+UMAK-2026-0005,"Approved Student One",18,"123 Makati Street, Brgy. Poblacion, Makati City","09170000001","Makati High School","Bachelor of Science in Computer Science (BSCS)",90.00,FIRST_YEAR,APPROVED,2026-10-24
+UMAK-2026-0006,"Pending Student Two",18,"456 Ayala Avenue, Makati City","09170000002","Makati Science High School","Bachelor of Science in Accountancy (BSA)",82.00,FIRST_YEAR,PENDING,2026-10-24
+UMAK-2026-0007,"Rejected Student Three",19,"789 Rizal Avenue, Taguig City","09170000003","Taguig National High School","Bachelor of Science in Information Technology (BSIT)",74.00,FIRST_YEAR,REJECTED,2026-10-24
+UMAK-2026-0008,"Waitlisted Student Four",18,"321 Bonifacio Street, Quezon City","09170000004","Quezon City High School","Bachelor of Science in Nursing (BSN)",88.00,FIRST_YEAR,APPROVED,2026-10-24
+UMAK-2026-0009,"Pending Student Five",19,"654 Mabini Street, Pasay City","09170000005","Pasay City South High School","Bachelor of Magic Arts",92.00,FIRST_YEAR,PENDING,2026-10-24
