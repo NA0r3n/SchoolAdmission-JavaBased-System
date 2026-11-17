@@ -422,7 +422,7 @@ public class main {
 
                 case 7:
                     clearScreen();
-                    service.generateExpandedReport(service.getAllStudents());
+                    service.generateExpandedReport();
                     pause(input);
                     break;
 
