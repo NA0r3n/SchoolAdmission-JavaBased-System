@@ -59,6 +59,7 @@ public class main {
             System.out.println("[6] Course Summary");
             System.out.println("[7] Admission Reports");
             System.out.println("[8] Exit");
+            System.out.println("[9] Save Changes");
             System.out.println();
             System.out.print("Enter choice: ");
 
@@ -435,6 +436,16 @@ public class main {
                     running = false;
                     break;
 
+                case 9:
+                    clearSystem();
+                    if (service.saveToFile()) {
+                        System.out.println("\nAll changes saved successfully.");
+                    } else {
+                        System.out.println("\nSave failed! Check that the folder is writable.");
+                    }
+                    pause(input);
+                    break;
+                    
                 default:
                     System.out.println("\nInvalid choice. Please try again.");
                     pause(input);
