@@ -20,6 +20,10 @@ public class Student {
         this.dateAdmitted = LocalDate.now();
     }
 
+    public void setStudentID(String studentID) {
+      this.studentID = studentID;
+    }
+
     public String getStudentID() {
         return studentID;
     }

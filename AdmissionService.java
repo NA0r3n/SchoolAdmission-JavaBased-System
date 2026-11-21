@@ -20,7 +20,7 @@ public class AdmissionService {
     }
 
     private void initializeCourses() {
-        addCourse(new CourseRequirement("Bachelor of Science in Information Technology (BSIT)", College.CCIS, 80.0, 150));
+        addCourse(new CourseRequirement("Bachelor of Science in Information Technology (BSIT)", College.CCIS, 80.0, 0));
         addCourse(new CourseRequirement("Bachelor of Science in Computer Science (BSCS)", College.CCIS, 83.0, 120));
         addCourse(new CourseRequirement("Bachelor of Science in Accountancy (BSA)", College.CBFS, 85.0, 80));
         addCourse(new CourseRequirement("Bachelor of Science in Management Accounting (BSMA)", College.CBFS, 85.0, 60));
@@ -102,10 +102,11 @@ public class AdmissionService {
         return registerNewStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, false);
     }
 
-    private Student registerNewStudent(String fullName, int age, String address, String contact, String prevSchool, String courseApplied, double gwa, YearLevel yearLevel, boolean isPreloaded) {
+    private Student registerNewStudent(String fullName, int age, String address, String contact,              String prevSchool, String courseApplied, double gwa,             YearLevel yearLevel, boolean isPreloaded) {
         CourseRequirement req = courseRequirements.get(courseApplied);
         String status;
-
+        String studentID = null;
+      
         if (req == null) {
             status = "PENDING";
         } else if (gwa < 75.0) {
@@ -117,10 +118,10 @@ public class AdmissionService {
         } else {
             status = "APPROVED";
             courseTakenSlots.put(courseApplied, courseTakenSlots.get(courseApplied) + 1);
+            int currentYear = LocalDate.now().getYear();
+            studentID = "UMAK-" + currentYear + "-" + String.format("%04d", rawIDSequence++);
         }
-
-        int currentYear = LocalDate.now().getYear();
-        String studentID = "UMAK-" + currentYear + "-" + String.format("%04d", rawIDSequence++);
+      
         Student newStudent = new Student(studentID, fullName, courseApplied);
         newStudent.setStatus(status);
         newStudent.setAge(age);
@@ -135,18 +136,21 @@ public class AdmissionService {
         return newStudent;
     }
 
+
     public List<Student> getAllStudents() {
         return students;
     }
 
     public Student searchByID(String id) {
-        for (Student s : students) {
-            if (s.getStudentID().equals(id)) {
-                return s;
-            }
-        }
-        return null;
+      for (Student s : students) {
+          String sid = s.getStudentID();
+          if (sid != null && sid.equals(id)) {
+              return s;
+          }
+      }
+      return null;
     }
+
 
     public List<Student> searchByName(String keyword) {
         List<Student> results = new ArrayList<>();
@@ -158,25 +162,55 @@ public class AdmissionService {
         return results;
     }
 
+        // for students WITH ID
     public boolean updateStudentStatus(String id, String newStatus) {
         Student student = searchByID(id);
         if (student == null) {
             return false;
         }
+        return updateStudentStatus(student, newStatus);
+    }
+
+    // works for ANY student, no ID needed
+    public boolean updateStudentStatus(Student student, String newStatus) {
+        if (student == null) {
+            return false;
+        }
+        
         String oldStatus = student.getStatus();
         String course = student.getCourseApplied();
-        if (oldStatus.equals("APPROVED") && !newStatus.equals("APPROVED")) {
-            courseTakenSlots.put(course, courseTakenSlots.get(course) - 1);
-        } else if (!oldStatus.equals("APPROVED") && newStatus.equals("APPROVED")) {
+        
+        // Get course requirement — check if it exists
+        CourseRequirement req = courseRequirements.get(course);
+        
+        // Can't approve if course doesn't exist or is full
+        if (!oldStatus.equals("APPROVED") && newStatus.equals("APPROVED")) {
+            if (req == null) {
+                return false; // Unknown course — can't approve
+            }
             if (courseTakenSlots.get(course) >= courseSlots.get(course)) {
-                return false;
+                return false; 
             }
             courseTakenSlots.put(course, courseTakenSlots.get(course) + 1);
+            
+            // Assign ID now if they're being approved
+            if (student.getStudentID() == null) {
+                int currentYear = LocalDate.now().getYear();
+                String newId = "UMAK-" + currentYear + "-" + String.format("%04d", rawIDSequence++);
+                // Need a setter in Student class
+                student.setStudentID(newId);
+            }
         }
+        // If losing approval — free up the slot
+        else if (oldStatus.equals("APPROVED") && !newStatus.equals("APPROVED")) {
+            courseTakenSlots.put(course, courseTakenSlots.get(course) - 1);
+        }
+        
         student.setStatus(newStatus);
         saveStudentsToCSV();
         return true;
     }
+
 
     public boolean deleteStudent(String id) {
         Student student = searchByID(id);
@@ -316,45 +350,56 @@ public class AdmissionService {
     }
 
     private void loadStudentsFromCSV() {
-        File file = new File(STUDENT_CSV);
-        if (!file.exists()) return;
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            br.readLine();
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-                String studentID = parts[0].trim();
-                String fullName = parts[1].replace("\"", "").trim();
-                int age = Integer.parseInt(parts[2].trim());
-                String address = parts[3].replace("\"", "").trim();
-                String contact = parts[4].replace("\"", "").trim();
-                String prevSchool = parts[5].replace("\"", "").trim();
-                String courseApplied = parts[6].replace("\"", "").trim();
-                double gwa = Double.parseDouble(parts[7].trim());
-                YearLevel yearLevel = YearLevel.valueOf(parts[8].trim());
-                String status = parts[9].trim();
-                LocalDate dateAdmitted = LocalDate.parse(parts[10].trim());
-
-                Student loadedStudent = new Student(studentID, fullName, courseApplied);
-                loadedStudent.setAge(age);
-                loadedStudent.setAddress(address);
-                loadedStudent.setContact(contact);
-                loadedStudent.setPrevSchool(prevSchool);
-                loadedStudent.setGrades(gwa);
-                loadedStudent.setYearLevel(yearLevel);
-                loadedStudent.setStatus(status);
-                loadedStudent.setDateAdmitted(dateAdmitted);
-                students.add(loadedStudent);
-
-                String[] idSplit = studentID.split("-");
-                int seq = Integer.parseInt(idSplit[2]);
-                if (seq >= rawIDSequence) {
-                    rawIDSequence = seq + 1;
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("[CSV LOAD WARNING] " + e.getMessage());
-        }
+      File file = new File(STUDENT_CSV);
+      if (!file.exists()) return;
+      try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+          br.readLine();
+          String line;
+          while ((line = br.readLine()) != null) {
+              String[] parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+              
+              String studentID = parts[0].trim();
+              String fullName = parts[1].replace("\"", "").trim();
+              int age = Integer.parseInt(parts[2].trim());
+              String address = parts[3].replace("\"", "").trim();
+              String contact = parts[4].replace("\"", "").trim();
+              String prevSchool = parts[5].replace("\"", "").trim();
+              String courseApplied = parts[6].replace("\"", "").trim();
+              double gwa = Double.parseDouble(parts[7].trim());
+              YearLevel yearLevel = YearLevel.valueOf(parts[8].trim());
+              String status = parts[9].trim();
+              LocalDate dateAdmitted = LocalDate.parse(parts[10].trim());
+    
+              String idToStore = studentID.isBlank() ? null : studentID;
+    
+              Student loadedStudent = new Student(idToStore, fullName, courseApplied);
+              loadedStudent.setAge(age);
+              loadedStudent.setAddress(address);
+              loadedStudent.setContact(contact);
+              loadedStudent.setPrevSchool(prevSchool);
+              loadedStudent.setGrades(gwa);
+              loadedStudent.setYearLevel(yearLevel);
+              loadedStudent.setStatus(status);
+              loadedStudent.setDateAdmitted(dateAdmitted);
+              students.add(loadedStudent);
+    
+              if (!studentID.isBlank()) {
+                  String[] idSplit = studentID.split("-");
+                  if (idSplit.length >= 3) {
+                      try {
+                          int seq = Integer.parseInt(idSplit[2]);
+                          if (seq >= rawIDSequence) {
+                              rawIDSequence = seq + 1;
+                          }
+                      } catch (NumberFormatException e) {
+                          // skip invalid ID format
+                      }
+                  }
+              }
+          }
+      } catch (Exception e) {
+          System.out.println("[CSV LOAD ERROR] " + e.getMessage());
+          e.printStackTrace();
+      }
     }
-
 }
