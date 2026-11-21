@@ -2,20 +2,21 @@
 
 ## 1. System Architecture & Role of Individual Files (Mermaid)
 
-This diagram illustrates how the six `.java` source files interact with one another and with external CSV storage.
+This diagram illustrates how the seven `.java` source files interact with one another and with external CSV storage.
 
 ```mermaid
 flowchart TD
     subgraph Presentation_Layer ["Presentation / CLI Layer"]
-        MAIN["main.java - Displays CLI menus and prompts; validates user input"]
+        MAIN["Main.java - Displays CLI menus, 2-step registration & requirements checker, and search/selection prompts"]
+        CHECKER["Checker.java - Validates strict true/false boolean console prompts"]
     end
 
     subgraph Service_Layer ["Business Logic and Persistence Layer"]
-        SERVICE["AdmissionService.java - Evaluates GWA and slot eligibility; generates IDs and manages CSV I/O"]
+        SERVICE["AdmissionService.java - Evaluates GWA and slot eligibility; assigns IDs upon approval and manages CSV I/O"]
     end
 
     subgraph Domain_Models ["Domain Models and Enums"]
-        STUDENT["Student.java - Stores applicant attributes with getters and setters"]
+        STUDENT["Student.java - Stores applicant attributes with getters and setters (nullable studentID)"]
         COURSEREQ["CourseRequirement.java - Stores minGWA and max slots; links Course to College"]
         COLLEGE["College.java Enum - 11 UMak Colleges with Acronym and fullName"]
         YEAR["YearLevel.java Enum - FIRST_YEAR to FOURTH_YEAR with displayName"]
@@ -27,6 +28,7 @@ flowchart TD
     end
 
     MAIN -->|"Calls service methods"| SERVICE
+    MAIN -.->|"Uses helper validation"| CHECKER
     MAIN -.->|"Reads enum values"| COLLEGE
     MAIN -.->|"Reads enum values"| YEAR
     MAIN -.->|"Displays data from"| STUDENT
@@ -45,31 +47,37 @@ flowchart TD
 
 ## 2. Main System Execution Flowchart (Mermaid)
 
-This flowchart details the runtime lifecycle from program startup through menu selection and automated admission evaluation.
+This flowchart details the updated runtime lifecycle from program startup through the two-step document verification and registration preview, deferred ID generation upon approval, and name/ID selection workflows.
 
 ```mermaid
 flowchart TD
-    START(["Program Start: main"]) --> INIT["Instantiate AdmissionService: Initialize 31 courses, load students.csv, recalculate slots"]
+    START(["Program Start: Main"]) --> INIT["Instantiate AdmissionService: Initialize 31 courses, load students.csv, sync ID sequence & recalculate slots"]
     INIT --> MENU{"Display Main Menu and Read Choice 1-8"}
 
     MENU -->|"Invalid Input"| ERR["Display Error Message"] --> MENU
 
-    MENU -->|"1: Register"| REG_IN["Input and Validate Personal Details, Year Level, College, Course and GWA"]
-    REG_IN --> CHK_GWA1{"GWA less than 75.0?"}
-    CHK_GWA1 -->|"Yes"| STAT_REJ["Status = REJECTED"]
-    CHK_GWA1 -->|"No"| CHK_GWA2{"GWA less than Course Min GWA?"}
-    CHK_GWA2 -->|"Yes"| STAT_PEN["Status = PENDING"]
-    CHK_GWA2 -->|"No"| CHK_SLOT{"Taken Slots >= Max Slots?"}
-    CHK_SLOT -->|"Yes"| STAT_WAIT["Status = WAITLISTED"]
-    CHK_SLOT -->|"No"| STAT_APP["Status = APPROVED and Increment Taken Slots"]
+    MENU -->|"1: Register"| STEP1["Step 1: Input & Validate Name + Batch Requirements Checklist"]
+    STEP1 --> CHK_MAND{"Missing Mandatory Docs?"}
+    CHK_MAND -->|"Yes"| BLOCK["Display BLOCKED Message & Return to Menu"] --> MENU
+    CHK_MAND -->|"No (Complete or To-Follow)"| STEP2["Step 2: Input Personal Details, Year Level, College, Course & GWA"]
 
-    STAT_REJ & STAT_PEN & STAT_WAIT & STAT_APP --> SAVE_NEW["Generate Student ID, Save to students.csv, Display Receipt"] --> MENU
+    STEP2 --> PREVIEW["Display Application Preview & Predicted Status"]
+    PREVIEW --> CONFIRM{"Submit Application? (y/n)"}
+    CONFIRM -->|"No"| CANCEL["Display Cancelled Message"] --> MENU
+    CONFIRM -->|"Yes"| EVAL{"Evaluate Course, GWA, Slots & To-Follow Docs"}
 
-    MENU -->|"2: View All"| VIEW["Fetch all students and print list"] --> MENU
+    EVAL -->|"Course Unknown / GWA < Min / To-Follow"| STAT_PEN["Status = PENDING (ID = null)"]
+    EVAL -->|"GWA < 75.0"| STAT_REJ["Status = REJECTED (ID = null)"]
+    EVAL -->|"Slots <= 0"| STAT_WAIT["Status = WAITLISTED (ID = null)"]
+    EVAL -->|"Eligible & Complete"| STAT_APP["Status = APPROVED, Increment Slots, Assign UMAK-YYYY-XXXX ID"]
+
+    STAT_PEN & STAT_REJ & STAT_WAIT & STAT_APP --> SAVE_NEW["Save Student Record to students.csv"] --> MENU
+
+    MENU -->|"2: View All"| VIEW["Fetch all students and print formatted summaries"] --> MENU
     MENU -->|"3: Search"| SEARCH["Search by ID or Name keyword and display matches"] --> MENU
-    MENU -->|"4: Update Status"| UPDATE["Find Student, verify slot capacity, adjust slots and save CSV"] --> MENU
-    MENU -->|"5: Delete Record"| DELETE["Find Student, confirm, free slot if APPROVED, remove and save CSV"] --> MENU
-    MENU -->|"6: Course Summary"| SUMMARY["Calculate remaining slots for all courses and display"] --> MENU
+    MENU -->|"4: Update Status"| UPDATE["Find Student by ID or Name list, verify slots, assign ID if newly APPROVED & save CSV"] --> MENU
+    MENU -->|"5: Delete Record"| DELETE["Find Student by ID or Name list, confirm, free slot if APPROVED & save CSV"] --> MENU
+    MENU -->|"6: Course Summary"| SUMMARY["Group by College and display remaining slots & min GWA"] --> MENU
     MENU -->|"7: Reports"| REPORT["Calculate totals, counts and yield rate; optional CSV export"] --> MENU
     MENU -->|"8: Exit"| EXIT(["Close Reader and Terminate"])
 ```
@@ -78,9 +86,16 @@ flowchart TD
 
 ## 3. Pseudocode for Each Source File
 
-### 3.1 `main.java`
+### 3.1 `Main.java`
 ```text
-BEGIN CLASS main
+BEGIN CLASS Main
+    CONSTANT DIVIDER = "------------------------------------"
+    CONSTANT HEADER_LINE = "===================================="
+    CONSTANT REQUIRED_DOCS = [
+        "Notice of Admission", "Medical Certificate", "Form 138 / Report Card",
+        "Form 137", "Good Moral Certificate", "PSA Birth Certificate", "2x2 ID Picture"
+    ]
+    CONSTANT IS_MANDATORY = [true, false, true, false, false, true, false]
 
     FUNCTION isValidName(name)
         RETURN name IS NOT NULL AND name IS NOT BLANK AND name MATCHES "^[a-zA-Z\s'-]+$"
@@ -92,21 +107,66 @@ BEGIN CLASS main
 
     FUNCTION capitalizeName(text)
         IF text IS NULL OR BLANK THEN RETURN text
-        SPLIT text by whitespace into words
+        SPLIT trimmed text by whitespace into words
         FOR EACH word IN words
             APPEND uppercase(first letter) + lowercase(remaining letters) + " " to result
         END FOR
         RETURN trimmed result
     END FUNCTION
 
-    FUNCTION pause(input)
-        PRINT "Press Enter to continue..."
-        READ line from input
+    PROCEDURE printBanner(title, subtitle)
+        PRINT HEADER_LINE, title, optional subtitle, HEADER_LINE
+    END PROCEDURE
+
+    PROCEDURE printSection(title)
+        PRINT DIVIDER, title, DIVIDER
+    END PROCEDURE
+
+    FUNCTION readIntInRange(input, prompt, min, max)
+        LOOP FOREVER
+            PRINT prompt
+            TRY
+                PARSE line AS INTEGER value
+                IF value >= min AND value <= max THEN RETURN value
+                PRINT "[!] Enter min to max."
+            CATCH NumberFormatException
+                PRINT "[!] Invalid input. Enter a number."
+            END TRY
+        END LOOP
     END FUNCTION
 
-    FUNCTION clearScreen()
-        PRINT ANSI escape codes to clear console
+    FUNCTION checkRequirementsBatch(input)
+        INITIALIZE submitted[0..6] = TRUE
+        DISPLAY numbered REQUIRED_DOCS with [REQ] or [OPT] tags
+        LOOP FOREVER
+            READ line ("Missing items: ")
+            IF line IS EMPTY OR line EQUALS "none" OR line EQUALS "0" THEN
+                RETURN submitted
+            END IF
+            RESET submitted[0..6] = TRUE
+            SPLIT line by commas/spaces into tokens
+            VALIDATE each token is an integer in 1..7 and SET submitted[num - 1] = FALSE
+            IF all tokens valid THEN RETURN submitted
+            PRINT "[!] Enter numbers 1-7 or 'none'."
+        END LOOP
     END FUNCTION
+
+    PROCEDURE pause(input)
+        PRINT DIVIDER and "Press Enter to continue..."
+        READ line from input
+    END PROCEDURE
+
+    PROCEDURE clearScreen()
+        PRINT ANSI escape codes to clear console
+    END PROCEDURE
+
+    PROCEDURE printStudentSummary(s)
+        PRINT ID (or "Not Assigned"), Name, Year Level, Course, GWA, Status, Date Admitted
+    END PROCEDURE
+
+    PROCEDURE printCompactStudentRow(prefix, s)
+        PRINT prefix, StudentID (or "No ID"), Status, and FullName
+    END PROCEDURE
 
     PROCEDURE main(args)
         CREATE service = NEW AdmissionService()
@@ -115,30 +175,49 @@ BEGIN CLASS main
 
         WHILE running IS TRUE
             CALL clearScreen()
-            DISPLAY University of Makati Admission System Menu (Options 1 to 8)
+            CALL printBanner("UNIVERSITY OF MAKATI", "Admission Management System")
+            DISPLAY Menu Options [1] through [8]
             TRY
                 READ choice AS INTEGER
             CATCH NumberFormatException
-                PRINT "Invalid input. Please enter a number."
+                PRINT "[!] Invalid input. Enter a number."
                 CALL pause(input)
                 CONTINUE LOOP
             END TRY
 
             SWITCH choice
-                CASE 1: // Register New Student
-                    PROMPT AND VALIDATE firstName, middleName (optional), lastName using isValidName()
+                CASE 1: // Register New Student (2-Step Process)
+                    // Step 1: Document Verification
+                    PROMPT AND VALIDATE firstName, optional middleName, lastName using isValidName()
                     FORMAT fullName using capitalizeName() and middle initial
-                    PROMPT AND VALIDATE age (1 to 100)
+                    CALL submitted = checkRequirementsBatch(input)
+                    PARTITION missing items into missingMandatory and toFollowDocs
+                    DISPLAY Evaluation Result ([BLOCKED] and [TO-FOLLOW] items)
+                    IF missingMandatory IS NOT EMPTY THEN
+                        PRINT "[!] REGISTRATION BLOCKED - Submit mandatory documents first."
+                        CALL pause(input)
+                        BREAK
+                    END IF
+                    CALL pause(input)
+
+                    // Step 2: Profile & Course
+                    CALL clearScreen()
+                    READ age = readIntInRange(input, "Age (1-100): ", 1, 100)
                     PROMPT address
                     PROMPT AND VALIDATE contact using isValidContact()
                     PROMPT prevSchool
-                    DISPLAY YearLevel options (1-4) AND VALIDATE selection
-                    DISPLAY all colleges from service.getAllColleges() AND VALIDATE selection
-                    DISPLAY courses for selectedCollege with minGWA AND VALIDATE selection
+                    READ yearChoice = readIntInRange(input, "Enter choice: ", 1, 4)
+                    DISPLAY colleges from service.getAllColleges() AND read collegeIndex
+                    DISPLAY courses for selectedCollege with Min GWA AND read courseIndex
                     PROMPT AND VALIDATE gwa (0.0 to 99.9)
-                    CALL newStudent = service.registerNewStudent(...)
-                    IF newStudent IS NOT NULL THEN
-                        DISPLAY registration confirmation receipt
+
+                    // Application Preview
+                    FETCH req = service.getCourseRequirement(courseApplied)
+                    FETCH remainingSlots = service.getCourseSummary().getOrDefault(courseApplied, 0)
+                    DISPLAY Application Preview & predicted Result (PENDING / REJECTED / WAITLISTED / APPROVED)
+                    PROMPT "Submit application? (y/n): "
+                    IF confirmApplication NOT EQUALS "y" (ignore case) THEN
+                        PRINT "Application cancelled."
                     END IF
                     CALL pause(input)
 
@@ -147,49 +226,53 @@ BEGIN CLASS main
                     IF allStudents IS EMPTY THEN
                         PRINT "No student records found."
                     ELSE
-                        FOR EACH student IN allStudents
-                            DISPLAY student details
+                        FOR EACH s IN allStudents
+                            CALL printStudentSummary(s)
                         END FOR
+                        PRINT "Total Records: " + allStudents.size()
                     END IF
                     CALL pause(input)
 
                 CASE 3: // Search Student
-                    PROMPT searchChoice (1: Search by ID, 2: Search by Name)
+                    READ searchChoice = readIntInRange(input, "Enter choice: ", 1, 2)
                     IF searchChoice == 1 THEN
-                        PROMPT id
-                        CALL found = service.searchByID(id)
-                        DISPLAY found student details OR "Student not found."
+                        PROMPT id; CALL found = service.searchByID(id)
+                        DISPLAY full student profile OR "Student not found."
                     ELSE
-                        PROMPT keyword
-                        CALL results = service.searchByName(keyword)
-                        DISPLAY matching students OR "No matching students found."
+                        PROMPT keyword; CALL results = service.searchByName(keyword)
+                        DISPLAY compact rows OR "No matching students found."
                     END IF
                     CALL pause(input)
 
                 CASE 4: // Update Student Status
-                    PROMPT updateId
-                    CALL studentToUpdate = service.searchByID(updateId)
+                    READ updateChoice = readIntInRange(input, "Enter choice: ", 1, 2)
+                    FIND studentToUpdate via searchByID() OR numbered list from searchByName()
                     IF studentToUpdate IS NULL THEN
                         PRINT "Student not found."
                     ELSE
-                        DISPLAY current details & valid statuses (APPROVED, PENDING, REJECTED, WAITLISTED)
-                        PROMPT newStatus
-                        CALL updated = service.updateStudentStatus(updateId, newStatus)
-                        DISPLAY success OR capacity failure message
+                        DISPLAY current record & status options (APPROVED, PENDING, REJECTED, WAITLISTED)
+                        PROMPT newStatus (uppercase)
+                        CALL updated = service.updateStudentStatus(studentToUpdate, newStatus)
+                        IF updated THEN
+                            PRINT "[OK] Status updated."
+                            IF newStatus == "APPROVED" AND studentID IS NOT NULL THEN PRINT New ID
+                        ELSE
+                            PRINT "[!] Update failed. Check status or slots."
+                        END IF
                     END IF
                     CALL pause(input)
 
                 CASE 5: // Delete Student Record
-                    PROMPT deleteId
-                    CALL studentToDelete = service.searchByID(deleteId)
+                    READ deleteChoice = readIntInRange(input, "Enter choice: ", 1, 2)
+                    FIND studentToDelete via searchByID() OR numbered list from searchByName()
                     IF studentToDelete IS NULL THEN
                         PRINT "Student not found."
                     ELSE
-                        DISPLAY student details
-                        PROMPT confirmation ("y/n")
-                        IF confirmation EQUALS "y" (ignore case) THEN
-                            CALL service.deleteStudent(deleteId)
-                            PRINT "Record deleted successfully."
+                        DISPLAY student details AND PROMPT "Confirm deletion? (y/n): "
+                        IF confirmDelete EQUALS "y" (ignore case) THEN
+                            SET targetKey = studentID if not null else fullName
+                            CALL service.deleteStudent(targetKey)
+                            PRINT "[OK] Record deleted."
                         ELSE
                             PRINT "Deletion cancelled."
                         END IF
@@ -198,8 +281,11 @@ BEGIN CLASS main
 
                 CASE 6: // Course Summary
                     GET summary = service.getCourseSummary()
-                    FOR EACH (courseName, availableSlots) IN summary
-                        PRINT availableSlots + " slots available | " + courseName
+                    FOR EACH college IN service.getAllColleges()
+                        CALL printSection(college + " - " + college.fullName)
+                        FOR EACH course IN service.getCoursesByCollege(college)
+                            PRINT course, remaining slots (or "FULL"), and Min GWA
+                        END FOR
                     END FOR
                     CALL pause(input)
 
@@ -208,23 +294,39 @@ BEGIN CLASS main
                     CALL pause(input)
 
                 CASE 8: // Exit
-                    PRINT Goodbye message
+                    PRINT Goodbye banner
                     SET running = FALSE
 
                 DEFAULT:
-                    PRINT "Invalid choice. Please try again."
+                    PRINT "[!] Invalid choice. Try again."
                     CALL pause(input)
             END SWITCH
         END WHILE
         CLOSE input
     END PROCEDURE
-
 END CLASS
 ```
 
 ---
 
-### 3.2 `AdmissionService.java`
+### 3.2 `Checker.java`
+```text
+BEGIN CLASS Checker
+    FUNCTION getBooleanInput(input, question)
+        LOOP FOREVER
+            PRINT question
+            READ answer = trimmed line from input
+            IF answer EQUALS "true" (ignore case) THEN RETURN TRUE
+            IF answer EQUALS "false" (ignore case) THEN RETURN FALSE
+            PRINT "Invalid input! Please enter only 'true' or 'false'."
+        END LOOP
+    END FUNCTION
+END CLASS
+```
+
+---
+
+### 3.3 `AdmissionService.java`
 ```text
 BEGIN CLASS AdmissionService
     PRIVATE students = NEW List<Student>
@@ -278,8 +380,9 @@ BEGIN CLASS AdmissionService
 
     FUNCTION registerNewStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, isPreloaded)
         GET req = courseRequirements.get(courseApplied)
-        
-        // Automated Status Evaluation Logic
+        SET studentID = NULL
+
+        // Automated Status & ID Evaluation Logic (ID assigned only when APPROVED)
         IF req IS NULL THEN
             SET status = "PENDING"
         ELSE IF gwa < 75.0 THEN
@@ -291,9 +394,9 @@ BEGIN CLASS AdmissionService
         ELSE
             SET status = "APPROVED"
             INCREMENT courseTakenSlots for courseApplied by 1
+            SET studentID = "UMAK-" + CurrentYear + "-" + ZERO_PAD(rawIDSequence++, 4)
         END IF
 
-        GENERATE studentID = "UMAK-" + CurrentYear + "-" + ZERO_PAD(rawIDSequence++, 4)
         CREATE newStudent = NEW Student(studentID, fullName, courseApplied)
         SET newStudent attributes (status, age, address, contact, prevSchool, gwa, yearLevel, dateAdmitted = TODAY)
         ADD newStudent TO students
@@ -307,7 +410,7 @@ BEGIN CLASS AdmissionService
 
     FUNCTION searchByID(id)
         FOR EACH s IN students
-            IF s.studentID EQUALS id THEN RETURN s
+            IF s.studentID IS NOT NULL AND s.studentID EQUALS id THEN RETURN s
         END FOR
         RETURN NULL
     END FUNCTION
@@ -323,17 +426,26 @@ BEGIN CLASS AdmissionService
     FUNCTION updateStudentStatus(id, newStatus)
         GET student = searchByID(id)
         IF student IS NULL THEN RETURN FALSE
-        
+        RETURN updateStudentStatus(student, newStatus)
+    END FUNCTION
+
+    FUNCTION updateStudentStatus(student, newStatus)
+        IF student IS NULL THEN RETURN FALSE
         SET oldStatus = student.status
         SET course = student.courseApplied
+        GET req = courseRequirements.get(course)
 
-        IF oldStatus == "APPROVED" AND newStatus != "APPROVED" THEN
-            DECREMENT courseTakenSlots for course by 1
-        ELSE IF oldStatus != "APPROVED" AND newStatus == "APPROVED" THEN
-            IF courseTakenSlots.get(course) >= courseSlots.get(course) THEN
-                RETURN FALSE // Course full
+        IF oldStatus != "APPROVED" AND newStatus == "APPROVED" THEN
+            IF req IS NULL OR courseTakenSlots.get(course) >= courseSlots.get(course) THEN
+                RETURN FALSE // Unknown course or full capacity
             END IF
             INCREMENT courseTakenSlots for course by 1
+            IF student.studentID IS NULL THEN
+                SET newId = "UMAK-" + CurrentYear + "-" + ZERO_PAD(rawIDSequence++, 4)
+                CALL student.setStudentID(newId)
+            END IF
+        ELSE IF oldStatus == "APPROVED" AND newStatus != "APPROVED" THEN
+            DECREMENT courseTakenSlots for course by 1
         END IF
 
         SET student.status = newStatus
@@ -399,17 +511,19 @@ BEGIN CLASS AdmissionService
         SKIP header row
         WHILE line = br.readLine() IS NOT NULL
             PARSE CSV columns (handling quoted commas)
+            SET idToStore = NULL if studentID is blank else studentID
             RECONSTRUCT Student object and ADD to students
-            EXTRACT sequence number from studentID and UPDATE rawIDSequence if seq >= rawIDSequence
+            IF studentID IS NOT BLANK THEN
+                EXTRACT sequence number from studentID and UPDATE rawIDSequence if seq >= rawIDSequence
+            END IF
         END WHILE
     END PROCEDURE
-
 END CLASS
 ```
 
 ---
 
-### 3.3 `Student.java`
+### 3.4 `Student.java`
 ```text
 BEGIN CLASS Student
     PRIVATE studentID, fullName, address, contact, prevSchool, courseApplied, status AS STRING
@@ -426,7 +540,7 @@ BEGIN CLASS Student
     END CONSTRUCTOR
 
     // Standard Getters and Setters for all private attributes:
-    // getStudentID(), getFullName(), get/setStatus(), get/setAge(),
+    // get/setStudentID(), getFullName(), get/setStatus(), get/setAge(),
     // get/setAddress(), get/setContact(), get/setPrevSchool(),
     // get/setGrades() [for gwa], getCourseApplied(),
     // get/setDateAdmitted(), get/setYearLevel()
@@ -435,7 +549,7 @@ END CLASS
 
 ---
 
-### 3.4 `CourseRequirement.java`
+### 3.5 `CourseRequirement.java`
 ```text
 BEGIN CLASS CourseRequirement
     PRIVATE courseName AS STRING
@@ -457,7 +571,7 @@ END CLASS
 
 ---
 
-### 3.5 `College.java`
+### 3.6 `College.java`
 ```text
 BEGIN ENUM College
     CONSTANTS:
@@ -483,7 +597,7 @@ END ENUM
 
 ---
 
-### 3.6 `YearLevel.java`
+### 3.7 `YearLevel.java`
 ```text
 BEGIN ENUM YearLevel
     CONSTANTS:
