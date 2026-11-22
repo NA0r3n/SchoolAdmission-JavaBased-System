@@ -20,8 +20,8 @@
 [Features](#features) ·
 [How it decides](#how-admission-decisions-are-made) ·
 [Quick start](#quick-start) ·
-[Screenshots](#screenshots) ·
 [Architecture](#architecture) ·
+[Screenshots](#screenshots) ·
 
 <br>
 
