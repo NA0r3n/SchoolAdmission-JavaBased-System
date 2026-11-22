@@ -9,6 +9,7 @@ public class AdmissionService {
     private Map<String, Integer> courseTakenSlots = new HashMap<>();
     private int rawIDSequence = 1;
     private static final String STUDENT_CSV = "students.csv";
+    private static final Set<String> VALID_STATUSES = Set.of("APPROVED", "PENDING", "REJECTED", "WAITLISTED");
 
     public AdmissionService() {
         initializeCourses();
@@ -91,7 +92,7 @@ public class AdmissionService {
     }
 
     private Student registerPreloadedStudent(String fullName, int age, String address, String contact, String prevSchool, String courseApplied, double gwa, YearLevel yearLevel, LocalDate dateAdmitted) {
-        Student student = registerNewStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, true);
+        Student student = createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, true, false);
         if (student != null) {
             student.setDateAdmitted(dateAdmitted);
         }
@@ -99,29 +100,43 @@ public class AdmissionService {
     }
 
     public Student registerNewStudent(String fullName, int age, String address, String contact, String prevSchool, String courseApplied, double gwa, YearLevel yearLevel) {
-        return registerNewStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, false);
+        return createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, false, false);
     }
 
-    private Student registerNewStudent(String fullName, int age, String address, String contact,              String prevSchool, String courseApplied, double gwa,             YearLevel yearLevel, boolean isPreloaded) {
+    // hasToFollowDocs = true when optional documents are still missing (caps the result at PENDING)
+    public Student registerNewStudent(String fullName, int age, String address, String contact, String prevSchool, String courseApplied, double gwa, YearLevel yearLevel, boolean hasToFollowDocs) {
+        return createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, false, hasToFollowDocs);
+    }
+
+    // Single source of truth for the admission decision (first matching rule wins)
+    public String predictStatus(String courseApplied, double gwa, boolean hasToFollowDocs) {
         CourseRequirement req = courseRequirements.get(courseApplied);
-        String status;
-        String studentID = null;
-      
         if (req == null) {
-            status = "PENDING";
+            return "PENDING";
         } else if (gwa < 75.0) {
-            status = "REJECTED";
+            return "REJECTED";
         } else if (gwa < req.getMinGWA()) {
-            status = "PENDING";
+            return "PENDING";
         } else if (courseTakenSlots.get(courseApplied) >= courseSlots.get(courseApplied)) {
-            status = "WAITLISTED";
-        } else {
-            status = "APPROVED";
+            return "WAITLISTED";
+        } else if (hasToFollowDocs) {
+            return "PENDING";
+        }
+        return "APPROVED";
+    }
+
+    private Student createStudent(String fullName, int age, String address, String contact, String prevSchool,
+                                  String courseApplied, double gwa, YearLevel yearLevel,
+                                  boolean isPreloaded, boolean hasToFollowDocs) {
+        String status = predictStatus(courseApplied, gwa, hasToFollowDocs);
+        String studentID = null;
+
+        if (status.equals("APPROVED")) {
             courseTakenSlots.put(courseApplied, courseTakenSlots.get(courseApplied) + 1);
             int currentYear = LocalDate.now().getYear();
             studentID = "UMAK-" + currentYear + "-" + String.format("%04d", rawIDSequence++);
         }
-      
+
         Student newStudent = new Student(studentID, fullName, courseApplied);
         newStudent.setStatus(status);
         newStudent.setAge(age);
@@ -177,6 +192,10 @@ public class AdmissionService {
             return false;
         }
         
+        if (newStatus == null || !VALID_STATUSES.contains(newStatus)) {
+            return false; // reject anything that is not a real status
+        }
+
         String oldStatus = student.getStatus();
         String course = student.getCourseApplied();
         
@@ -203,7 +222,9 @@ public class AdmissionService {
         }
         // If losing approval — free up the slot
         else if (oldStatus.equals("APPROVED") && !newStatus.equals("APPROVED")) {
-            courseTakenSlots.put(course, courseTakenSlots.get(course) - 1);
+            if (courseTakenSlots.containsKey(course)) {
+                courseTakenSlots.put(course, Math.max(0, courseTakenSlots.get(course) - 1));
+            }
         }
         
         student.setStatus(newStatus);
@@ -213,16 +234,20 @@ public class AdmissionService {
 
 
     public boolean deleteStudent(String id) {
-        Student student = searchByID(id);
-        if (student != null) {
-            if (student.getStatus().equals("APPROVED")) {
-                courseTakenSlots.put(student.getCourseApplied(), courseTakenSlots.get(student.getCourseApplied()) - 1);
-            }
-            students.remove(student);
-            saveStudentsToCSV();
-            return true;
+        return deleteStudent(searchByID(id));
+    }
+
+    // works for ANY student, no ID needed
+    public boolean deleteStudent(Student student) {
+        if (student == null || !students.remove(student)) {
+            return false;
         }
-        return false;
+        String course = student.getCourseApplied();
+        if (student.getStatus().equals("APPROVED") && courseTakenSlots.containsKey(course)) {
+            courseTakenSlots.put(course, Math.max(0, courseTakenSlots.get(course) - 1));
+        }
+        saveStudentsToCSV();
+        return true;
     }
 
     public Map<String, Integer> getCourseSummary() {
@@ -247,7 +272,7 @@ public class AdmissionService {
         return count;
     }
 
-    public void generateExpandedReport() {
+    public void generateExpandedReport(BufferedReader input) throws IOException {
         List<Student> studentList = getAllStudents();
         int total = studentList.size();
         int approved = 0, pending = 0, rejected = 0, waitlisted = 0;
@@ -274,10 +299,6 @@ public class AdmissionService {
 
         double yieldRate = (total == 0) ? 0 : ((double) approved / total) * 100;
 
-        System.out.println("=====================================");
-        System.out.println("          ADMISSION REPORTS          ");
-        System.out.println("=====================================");
-        System.out.println();
         System.out.println("Total Applicants : " + total);
         System.out.printf("Acceptance Rate  : %.2f%%%n", yieldRate);
         System.out.println("-------------------------------------");
@@ -296,13 +317,13 @@ public class AdmissionService {
             }
         }
         System.out.println("-------------------------------------");
-        promptExport(total, approved, pending, rejected, waitlisted, yieldRate);
+        promptExport(input, total, approved, pending, rejected, waitlisted, yieldRate);
     }
 
-    public void promptExport(int total, int approved, int pending, int rejected, int waitlisted, double yieldRate) {
-        Scanner scan = new Scanner(System.in);
+    public void promptExport(BufferedReader input, int total, int approved, int pending, int rejected, int waitlisted, double yieldRate) throws IOException {
         System.out.print("\nPress [E] to export this report to CSV, or press Enter to skip: ");
-        String choice = scan.nextLine();
+        String choice = input.readLine();
+        choice = (choice == null) ? "" : choice.trim();
 
         if (choice.equalsIgnoreCase("E")) {
             try (PrintWriter writer = new PrintWriter(new FileWriter("Admission_Report.csv"))) {
@@ -339,7 +360,7 @@ public class AdmissionService {
             pw.println("studentID,fullName,age,address,contact,prevSchool,courseApplied,gwa,yearLevel,status,dateAdmitted");
             for (Student s : students) {
                 pw.printf("%s,\"%s\",%d,\"%s\",\"%s\",\"%s\",\"%s\",%.2f,%s,%s,%s%n",
-                        s.getStudentID(), s.getFullName(), s.getAge(),
+                        s.getStudentID() == null ? "" : s.getStudentID(), s.getFullName(), s.getAge(),
                         s.getAddress(), s.getContact(), s.getPrevSchool(),
                         s.getCourseApplied(), s.getGrades(), s.getYearLevel(),
                         s.getStatus(), s.getDateAdmitted());
@@ -370,7 +391,9 @@ public class AdmissionService {
               String status = parts[9].trim();
               LocalDate dateAdmitted = LocalDate.parse(parts[10].trim());
     
-              String idToStore = studentID.isBlank() ? null : studentID;
+              boolean noId = studentID.isBlank() || studentID.equalsIgnoreCase("null"); // "null" = files saved by older versions
+              if (noId) studentID = "";
+              String idToStore = noId ? null : studentID;
     
               Student loadedStudent = new Student(idToStore, fullName, courseApplied);
               loadedStudent.setAge(age);

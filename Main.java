@@ -136,6 +136,18 @@ public class Main {
         }
     }
 
+    // Non-blank text; double quotes are swapped for apostrophes so the CSV stays valid
+    public static String readRequiredText(BufferedReader input, String prompt) throws Exception {
+        while (true) {
+            System.out.print(prompt);
+            String text = input.readLine().trim().replace("\"", "'");
+            if (!text.isBlank()) {
+                return text;
+            }
+            System.out.println("  [!] This field is required.");
+        }
+    }
+
     public static void pause(BufferedReader input) throws Exception {
         System.out.println();
         System.out.println(DIVIDER);
@@ -281,8 +293,7 @@ public class Main {
 
                     int age = readIntInRange(input, "Age (1-100): ", 1, 100);
 
-                    System.out.print("Complete Address: ");
-                    String address = input.readLine().trim();
+                    String address = readRequiredText(input, "Complete Address: ");
 
                     System.out.print("Contact (09XXXXXXXXX): ");
                     String contact = input.readLine().trim();
@@ -291,8 +302,7 @@ public class Main {
                         contact = input.readLine().trim();
                     }
 
-                    System.out.print("Previous School: ");
-                    String prevSchool = input.readLine().trim();
+                    String prevSchool = readRequiredText(input, "Previous School: ");
 
                     printSection("YEAR LEVEL");
                     System.out.println("  [1] 1st Year");
@@ -350,27 +360,33 @@ public class Main {
                     }
                     System.out.println();
 
+                    String predicted = service.predictStatus(courseApplied, gwa, hasToFollow);
                     if (req == null) {
                         System.out.println("  Result: PENDING (Course unknown)");
-                    } else if (gwa < 75.0) {
+                    } else if (predicted.equals("REJECTED")) {
                         System.out.println("  Result: REJECTED (Below 75.0)");
                     } else if (gwa < req.getMinGWA()) {
                         System.out.println("  Result: PENDING (Min: " + req.getMinGWA() + ")");
-                    } else if (remainingSlots <= 0) {
+                    } else if (predicted.equals("WAITLISTED")) {
                         System.out.println("  Result: WAITLISTED (No slots)");
-                    } else if (hasToFollow) {
+                    } else if (predicted.equals("PENDING")) {
                         System.out.println("  Result: PENDING (To-follow docs)");
                     } else {
                         System.out.println("  Result: APPROVED");
                     }
 
                     System.out.println();
-                    System.out.print("Submit application? (y/n): ");
-                    String confirmApplication = input.readLine().trim();
-                    if (!confirmApplication.equalsIgnoreCase("y")) {
+                    if (Checker.confirm(input, "Submit application? (y/n): ")) {
+                        Student saved = service.registerNewStudent(fullName, age, address, contact,
+                                prevSchool, courseApplied, gwa, yearLevel, hasToFollow);
+                        System.out.println();
+                        System.out.println("  [OK] Application submitted.");
+                        System.out.println("  Status : " + saved.getStatus());
+                        System.out.println("  ID     : " + (saved.getStudentID() != null ? saved.getStudentID() : "Not Assigned"));
+                    } else {
                         System.out.println("\n  Application cancelled.");
-                        pause(input);
                     }
+                    pause(input);
                     break;
                 }
 
@@ -496,7 +512,7 @@ public class Main {
                                 System.out.println("  New ID: " + studentToUpdate.getStudentID());
                             }
                         } else {
-                            System.out.println("  [!] Update failed. Check status or slots.");
+                            System.out.println("  [!] Update failed. Use a valid status and check slots.");
                         }
                     }
                     pause(input);
@@ -548,15 +564,14 @@ public class Main {
                       System.out.printf("  %-13s: %s%n", "Course", studentToDelete.getCourseApplied());
                       System.out.println(DIVIDER);
                       System.out.println();
-                      System.out.print("Confirm deletion? (y/n): ");
-                      String confirmDelete = input.readLine().trim();
+                      boolean confirmDelete = Checker.confirm(input, "Confirm deletion? (y/n): ");
                       System.out.println();
-                      if (confirmDelete.equalsIgnoreCase("y")) {
-                          String targetKey = studentToDelete.getStudentID() != null
-                                  ? studentToDelete.getStudentID()
-                                  : studentToDelete.getFullName();
-                          service.deleteStudent(targetKey);
-                          System.out.println("  [OK] Record deleted.");
+                      if (confirmDelete) {
+                          if (service.deleteStudent(studentToDelete)) {
+                              System.out.println("  [OK] Record deleted.");
+                          } else {
+                              System.out.println("  [!] Delete failed.");
+                          }
                       } else {
                           System.out.println("  Deletion cancelled.");
                       }
@@ -594,7 +609,7 @@ public class Main {
                 case 7: {
                     clearScreen();
                     printBanner("ADMISSION REPORTS", "Expanded System Report");
-                    service.generateExpandedReport();
+                    service.generateExpandedReport(input);
                     pause(input);
                     break;
                 }

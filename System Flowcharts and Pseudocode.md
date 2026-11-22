@@ -8,7 +8,7 @@ This diagram illustrates how the seven `.java` source files interact with one an
 flowchart TD
     subgraph Presentation_Layer ["Presentation / CLI Layer"]
         MAIN["Main.java - Displays CLI menus, 2-step registration & requirements checker, and search/selection prompts"]
-        CHECKER["Checker.java - Validates strict true/false boolean console prompts"]
+        CHECKER["Checker.java - Strict y/n confirmations and true/false console prompts"]
     end
 
     subgraph Service_Layer ["Business Logic and Persistence Layer"]
@@ -312,6 +312,16 @@ END CLASS
 ### 3.2 `Checker.java`
 ```text
 BEGIN CLASS Checker
+    FUNCTION confirm(input, question)
+        LOOP FOREVER
+            PRINT question
+            READ answer = trimmed line from input (empty if end of input)
+            IF answer EQUALS "y" or "yes" (ignore case) THEN RETURN TRUE
+            IF answer EQUALS "n" or "no" (ignore case) THEN RETURN FALSE
+            PRINT "[!] Please enter y or n."
+        END LOOP
+    END FUNCTION
+
     FUNCTION getBooleanInput(input, question)
         LOOP FOREVER
             PRINT question
