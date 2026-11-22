@@ -22,7 +22,6 @@
 [Quick start](#quick-start) ·
 [Screenshots](#screenshots) ·
 [Architecture](#architecture) ·
-[Changelog](#changelog)
 
 <br>
 
