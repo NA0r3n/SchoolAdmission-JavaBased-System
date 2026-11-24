@@ -157,6 +157,20 @@ public class AdmissionService {
         return null;
     }
 
+    public List<Student> filterByCourse(String keyword) {
+    List<Student> results = new ArrayList<>();
+    if (keyword == null || keyword.trim().isEmpty()) {
+        return results;
+    }
+
+    String target = keyword.trim().toLowerCase();
+    for (Student s : students) {
+        if (s.getCourseApplied() != null && s.getCourseApplied().toLowerCase().contains(target)) {
+            results.add(s);
+        }
+    }
+    return results;}
+
     public List<Student> searchByName(String keyword) {
         List<Student> results = new ArrayList<>();
         for (Student s : students) {
