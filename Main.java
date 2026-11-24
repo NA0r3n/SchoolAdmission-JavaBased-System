@@ -415,7 +415,7 @@ public class Main {
                     System.out.println("  [3] Filter by Course");
                     System.out.println();
 
-                    int searchChoice = readIntInRange(input, "Enter choice: ", 1, 2);
+                    int searchChoice = readIntInRange(input, "Enter choice: ", 1, 3);
                     System.out.println();
 
                      if (searchChoice == 3) {
@@ -600,6 +600,7 @@ public class Main {
                       continue;
                    } 
                  break; 
+                }
                 }
 
                 case 6: {
