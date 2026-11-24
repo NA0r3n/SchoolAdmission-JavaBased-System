@@ -412,6 +412,7 @@ public class Main {
                     printBanner("SEARCH STUDENT", "By ID or Name");
                     System.out.println("  [1] Search by ID");
                     System.out.println("  [2] Search by Name");
+                    System.out.println("  [3] Filter by Course");
                     System.out.println();
 
                     int searchChoice = readIntInRange(input, "Enter choice: ", 1, 2);
