@@ -13,7 +13,7 @@
 ![Dependencies](https://img.shields.io/badge/Dependencies-None-0366d6?style=for-the-badge)
 ![Colleges](https://img.shields.io/badge/Colleges-11-8957e5?style=for-the-badge)
 ![Programs](https://img.shields.io/badge/Programs-31-d73a49?style=for-the-badge)
-![Version](https://img.shields.io/badge/Version-1.5-6e7681?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-1.6-6e7681?style=for-the-badge)
 
 <br>
 
