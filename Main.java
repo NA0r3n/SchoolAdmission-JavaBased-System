@@ -448,10 +448,30 @@ public class Main {
                             for (Student s : results) {
                                 System.out.println(DIVIDER);
                                 printCompactStudentRow("", s);
-                            }
+                            } 
                             System.out.println(DIVIDER);
                         }
-                    }
+                    } {
+    System.out.print("Enter course keyword: ");
+    String keyword = input.readLine().trim();
+    System.out.println();
+
+    if (keyword.isEmpty()) {
+        System.out.println("  Course keyword cannot be blank.");
+    } else {
+        List<Student> byCourse = service.filterByCourse(keyword);
+        if (byCourse.isEmpty()) {
+            System.out.println("  No students found matching \"" + keyword + "\".");
+        } else {
+            System.out.println("  " + byCourse.size() + " student(s) matching \"" + keyword + "\":");
+            for (Student s : byCourse) {
+                System.out.println(DIVIDER);
+                printCompactStudentRow("", s);
+            }
+            System.out.println(DIVIDER);
+        }
+    }
+}
                     pause(input);
                     break;
                 }
@@ -519,6 +539,7 @@ public class Main {
                 }
 
                 case 5: {
+                    do {
                     clearScreen();
                     printBanner("DELETE STUDENT RECORD", "Remove Entry");
                     System.out.println("  [1] Delete by ID (Approved)");
@@ -575,6 +596,8 @@ public class Main {
                             System.out.println("  Deletion cancelled.");
                         }
                     }
+                        System.out.println();
+                        } while (Checker.confirm(input, "Delete another record?: "));
                     pause(input);
                     break;
                 }
