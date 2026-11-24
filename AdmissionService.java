@@ -1,4 +1,3 @@
-import java.io.*;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -8,15 +7,11 @@ public class AdmissionService {
     private Map<String, Integer> courseSlots = new HashMap<>();
     private Map<String, Integer> courseTakenSlots = new HashMap<>();
     private int rawIDSequence = 1;
-    private static final String STUDENT_CSV = "students.csv";
     private static final Set<String> VALID_STATUSES = Set.of("APPROVED", "PENDING", "REJECTED", "WAITLISTED");
 
     public AdmissionService() {
         initializeCourses();
-        loadStudentsFromCSV();
-        if (students.isEmpty()) {
-            createSampleStudents();
-        }
+        createSampleStudents();
         recalculateSlotCounts();
     }
 
@@ -79,7 +74,7 @@ public class AdmissionService {
     }
 
     private void createSampleStudents() {
-        registerPreloadedStudent("Nerwen Angelo C. Ogardo", 18, "#78 Block 4 Kalayaan Avenue Barangay West Rembo Taguig City", "09760895947", "Tanza National Comprehensive ", "Bachelor of Science in Computer Science (BSCS)", 99.9, YearLevel.FIRST_YEAR, LocalDate.of(2026, 1, 23));
+        registerPreloadedStudent("Nerwen Angelo C. Ogardo", 18, "#78 Block 4 Kalayaan Avenue Barangay West Rembo Taguig City", "09760895947", "Tanza National Comprehensive", "Bachelor of Science in Computer Science (BSCS)", 99.9, YearLevel.FIRST_YEAR, LocalDate.of(2026, 1, 23));
         registerPreloadedStudent("Samantha Angela Y. Sabino", 18, "45 Mabini Avenue, Barangay Poblacion, Santa Rosa, Laguna 4026", "09786642936", "Pateros Catholic School", "Bachelor of Science in Information Technology (BSIT)", 99.9, YearLevel.FIRST_YEAR, LocalDate.of(2026, 1, 24));
         registerPreloadedStudent("Ysaiah Myro Siblero", 19, "388 Guava Street, Brgy. Pinagsama, Wildcat, Taguig City", "09241752369", "MCA Montessori School", "Bachelor of Science in Computer Science (BSCS)", 99.9, YearLevel.FIRST_YEAR, LocalDate.of(2026, 10, 23));
         registerPreloadedStudent("Martin Benito E. Viñas", 18, "F. Castillo, Project 4, Quezon City", "09310230235", "University of the East", "Bachelor of Science in Computer Science (BSCS)", 99.9, YearLevel.FIRST_YEAR, LocalDate.of(2026, 10, 23));
@@ -88,11 +83,10 @@ public class AdmissionService {
         registerPreloadedStudent("Rejected Student Three", 19, "789 Rizal Avenue, Taguig City", "09170000003", "Taguig National High School", "Bachelor of Science in Information Technology (BSIT)", 74.0, YearLevel.FIRST_YEAR, LocalDate.of(2026, 10, 24));
         registerPreloadedStudent("Waitlisted Student Four", 18, "321 Bonifacio Street, Quezon City", "09170000004", "Quezon City High School", "Bachelor of Science in Nursing (BSN)", 88.0, YearLevel.FIRST_YEAR, LocalDate.of(2026, 10, 24));
         registerPreloadedStudent("Pending Student Five", 19, "654 Mabini Street, Pasay City", "09170000005", "Pasay City South High School", "Bachelor of Magic Arts", 92.0, YearLevel.FIRST_YEAR, LocalDate.of(2026, 10, 24));
-        saveStudentsToCSV();
     }
 
     private Student registerPreloadedStudent(String fullName, int age, String address, String contact, String prevSchool, String courseApplied, double gwa, YearLevel yearLevel, LocalDate dateAdmitted) {
-        Student student = createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, true, false);
+        Student student = createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, false);
         if (student != null) {
             student.setDateAdmitted(dateAdmitted);
         }
@@ -100,12 +94,12 @@ public class AdmissionService {
     }
 
     public Student registerNewStudent(String fullName, int age, String address, String contact, String prevSchool, String courseApplied, double gwa, YearLevel yearLevel) {
-        return createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, false, false);
+        return createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, false);
     }
 
     // hasToFollowDocs = true when optional documents are still missing (caps the result at PENDING)
     public Student registerNewStudent(String fullName, int age, String address, String contact, String prevSchool, String courseApplied, double gwa, YearLevel yearLevel, boolean hasToFollowDocs) {
-        return createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, false, hasToFollowDocs);
+        return createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, hasToFollowDocs);
     }
 
     // Single source of truth for the admission decision (first matching rule wins)
@@ -126,8 +120,7 @@ public class AdmissionService {
     }
 
     private Student createStudent(String fullName, int age, String address, String contact, String prevSchool,
-                                  String courseApplied, double gwa, YearLevel yearLevel,
-                                  boolean isPreloaded, boolean hasToFollowDocs) {
+                                  String courseApplied, double gwa, YearLevel yearLevel, boolean hasToFollowDocs) {
         String status = predictStatus(courseApplied, gwa, hasToFollowDocs);
         String studentID = null;
 
@@ -147,25 +140,22 @@ public class AdmissionService {
         newStudent.setYearLevel(yearLevel);
         newStudent.setDateAdmitted(LocalDate.now());
         students.add(newStudent);
-        saveStudentsToCSV();
         return newStudent;
     }
-
 
     public List<Student> getAllStudents() {
         return students;
     }
 
     public Student searchByID(String id) {
-      for (Student s : students) {
-          String sid = s.getStudentID();
-          if (sid != null && sid.equals(id)) {
-              return s;
-          }
-      }
-      return null;
+        for (Student s : students) {
+            String sid = s.getStudentID();
+            if (sid != null && sid.equals(id)) {
+                return s;
+            }
+        }
+        return null;
     }
-
 
     public List<Student> searchByName(String keyword) {
         List<Student> results = new ArrayList<>();
@@ -177,7 +167,7 @@ public class AdmissionService {
         return results;
     }
 
-        // for students WITH ID
+    // For students WITH ID
     public boolean updateStudentStatus(String id, String newStatus) {
         Student student = searchByID(id);
         if (student == null) {
@@ -186,37 +176,34 @@ public class AdmissionService {
         return updateStudentStatus(student, newStatus);
     }
 
-    // works for ANY student, no ID needed
+    // Works for ANY student, no ID needed
     public boolean updateStudentStatus(Student student, String newStatus) {
         if (student == null) {
             return false;
         }
-        
+
         if (newStatus == null || !VALID_STATUSES.contains(newStatus)) {
-            return false; // reject anything that is not a real status
+            return false;
         }
 
         String oldStatus = student.getStatus();
         String course = student.getCourseApplied();
-        
-        // Get course requirement — check if it exists
         CourseRequirement req = courseRequirements.get(course);
-        
+
         // Can't approve if course doesn't exist or is full
         if (!oldStatus.equals("APPROVED") && newStatus.equals("APPROVED")) {
             if (req == null) {
-                return false; // Unknown course — can't approve
+                return false;
             }
             if (courseTakenSlots.get(course) >= courseSlots.get(course)) {
-                return false; 
+                return false;
             }
             courseTakenSlots.put(course, courseTakenSlots.get(course) + 1);
-            
+
             // Assign ID now if they're being approved
             if (student.getStudentID() == null) {
                 int currentYear = LocalDate.now().getYear();
                 String newId = "UMAK-" + currentYear + "-" + String.format("%04d", rawIDSequence++);
-                // Need a setter in Student class
                 student.setStudentID(newId);
             }
         }
@@ -226,18 +213,16 @@ public class AdmissionService {
                 courseTakenSlots.put(course, Math.max(0, courseTakenSlots.get(course) - 1));
             }
         }
-        
+
         student.setStatus(newStatus);
-        saveStudentsToCSV();
         return true;
     }
-
 
     public boolean deleteStudent(String id) {
         return deleteStudent(searchByID(id));
     }
 
-    // works for ANY student, no ID needed
+    // Works for ANY student, no ID needed
     public boolean deleteStudent(Student student) {
         if (student == null || !students.remove(student)) {
             return false;
@@ -246,7 +231,6 @@ public class AdmissionService {
         if (student.getStatus().equals("APPROVED") && courseTakenSlots.containsKey(course)) {
             courseTakenSlots.put(course, Math.max(0, courseTakenSlots.get(course) - 1));
         }
-        saveStudentsToCSV();
         return true;
     }
 
@@ -272,7 +256,7 @@ public class AdmissionService {
         return count;
     }
 
-    public void generateExpandedReport(BufferedReader input) throws IOException {
+    public void generateExpandedReport() {
         List<Student> studentList = getAllStudents();
         int total = studentList.size();
         int approved = 0, pending = 0, rejected = 0, waitlisted = 0;
@@ -317,28 +301,6 @@ public class AdmissionService {
             }
         }
         System.out.println("-------------------------------------");
-        promptExport(input, total, approved, pending, rejected, waitlisted, yieldRate);
-    }
-
-    public void promptExport(BufferedReader input, int total, int approved, int pending, int rejected, int waitlisted, double yieldRate) throws IOException {
-        System.out.print("\nPress [E] to export this report to CSV, or press Enter to skip: ");
-        String choice = input.readLine();
-        choice = (choice == null) ? "" : choice.trim();
-
-        if (choice.equalsIgnoreCase("E")) {
-            try (PrintWriter writer = new PrintWriter(new FileWriter("Admission_Report.csv"))) {
-                writer.println("Metric,Value");
-                writer.println("Total Applicants," + total);
-                writer.println("Approved," + approved);
-                writer.println("Pending," + pending);
-                writer.println("Rejected," + rejected);
-                writer.println("Waitlisted," + waitlisted);
-                writer.printf("Acceptance Rate,%.2f%%%n", yieldRate);
-                System.out.println("[SUCCESS] Report saved to Admission_Report.csv");
-            } catch (IOException e) {
-                System.out.println("[ERROR] Failed to write file: " + e.getMessage());
-            }
-        }
     }
 
     private void recalculateSlotCounts() {
@@ -353,76 +315,5 @@ public class AdmissionService {
                 }
             }
         }
-    }
-
-    private void saveStudentsToCSV() {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(STUDENT_CSV))) {
-            pw.println("studentID,fullName,age,address,contact,prevSchool,courseApplied,gwa,yearLevel,status,dateAdmitted");
-            for (Student s : students) {
-                pw.printf("%s,\"%s\",%d,\"%s\",\"%s\",\"%s\",\"%s\",%.2f,%s,%s,%s%n",
-                        s.getStudentID() == null ? "" : s.getStudentID(), s.getFullName(), s.getAge(),
-                        s.getAddress(), s.getContact(), s.getPrevSchool(),
-                        s.getCourseApplied(), s.getGrades(), s.getYearLevel(),
-                        s.getStatus(), s.getDateAdmitted());
-            }
-        } catch (IOException e) {
-            System.out.println("[CSV SAVE ERROR] " + e.getMessage());
-        }
-    }
-
-    private void loadStudentsFromCSV() {
-      File file = new File(STUDENT_CSV);
-      if (!file.exists()) return;
-      try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-          br.readLine();
-          String line;
-          while ((line = br.readLine()) != null) {
-              String[] parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-              
-              String studentID = parts[0].trim();
-              String fullName = parts[1].replace("\"", "").trim();
-              int age = Integer.parseInt(parts[2].trim());
-              String address = parts[3].replace("\"", "").trim();
-              String contact = parts[4].replace("\"", "").trim();
-              String prevSchool = parts[5].replace("\"", "").trim();
-              String courseApplied = parts[6].replace("\"", "").trim();
-              double gwa = Double.parseDouble(parts[7].trim());
-              YearLevel yearLevel = YearLevel.valueOf(parts[8].trim());
-              String status = parts[9].trim();
-              LocalDate dateAdmitted = LocalDate.parse(parts[10].trim());
-    
-              boolean noId = studentID.isBlank() || studentID.equalsIgnoreCase("null"); // "null" = files saved by older versions
-              if (noId) studentID = "";
-              String idToStore = noId ? null : studentID;
-    
-              Student loadedStudent = new Student(idToStore, fullName, courseApplied);
-              loadedStudent.setAge(age);
-              loadedStudent.setAddress(address);
-              loadedStudent.setContact(contact);
-              loadedStudent.setPrevSchool(prevSchool);
-              loadedStudent.setGrades(gwa);
-              loadedStudent.setYearLevel(yearLevel);
-              loadedStudent.setStatus(status);
-              loadedStudent.setDateAdmitted(dateAdmitted);
-              students.add(loadedStudent);
-    
-              if (!studentID.isBlank()) {
-                  String[] idSplit = studentID.split("-");
-                  if (idSplit.length >= 3) {
-                      try {
-                          int seq = Integer.parseInt(idSplit[2]);
-                          if (seq >= rawIDSequence) {
-                              rawIDSequence = seq + 1;
-                          }
-                      } catch (NumberFormatException e) {
-                          // skip invalid ID format
-                      }
-                  }
-              }
-          }
-      } catch (Exception e) {
-          System.out.println("[CSV LOAD ERROR] " + e.getMessage());
-          e.printStackTrace();
-      }
     }
 }

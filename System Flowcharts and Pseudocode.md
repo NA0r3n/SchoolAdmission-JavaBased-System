@@ -2,7 +2,7 @@
 
 ## 1. System Architecture & Role of Individual Files (Mermaid)
 
-This diagram illustrates how the seven `.java` source files interact with one another and with external CSV storage.
+This diagram illustrates how the seven `.java` source files interact with one another using in-memory Java Collections (`ArrayList` and `HashMap`).
 
 ```mermaid
 flowchart TD
@@ -11,8 +11,8 @@ flowchart TD
         CHECKER["Checker.java - Strict y/n confirmations and true/false console prompts"]
     end
 
-    subgraph Service_Layer ["Business Logic and Persistence Layer"]
-        SERVICE["AdmissionService.java - Evaluates GWA and slot eligibility; assigns IDs upon approval and manages CSV I/O"]
+    subgraph Service_Layer ["Business Logic & In-Memory Storage Layer"]
+        SERVICE["AdmissionService.java - Evaluates GWA and slot eligibility; assigns IDs upon approval and manages ArrayList/HashMap records"]
     end
 
     subgraph Domain_Models ["Domain Models and Enums"]
@@ -20,11 +20,6 @@ flowchart TD
         COURSEREQ["CourseRequirement.java - Stores minGWA and max slots; links Course to College"]
         COLLEGE["College.java Enum - 11 UMak Colleges with Acronym and fullName"]
         YEAR["YearLevel.java Enum - FIRST_YEAR to FOURTH_YEAR with displayName"]
-    end
-
-    subgraph Storage_Layer ["File Storage CSV"]
-        CSV_DB[("students.csv - Persistent Student Database")]
-        CSV_REP[("Admission_Report.csv - Exported Analytics Report")]
     end
 
     MAIN -->|"Calls service methods"| SERVICE
@@ -38,20 +33,17 @@ flowchart TD
     SERVICE -->|"Maps and enforces rules via"| COURSEREQ
     COURSEREQ -->|"Categorized by"| COLLEGE
     STUDENT -->|"Assigned"| YEAR
-
-    SERVICE <-->|"Reads on startup / Writes on change"| CSV_DB
-    SERVICE -->|"Exports summary metrics to"| CSV_REP
 ```
 
 ---
 
 ## 2. Main System Execution Flowchart (Mermaid)
 
-This flowchart details the updated runtime lifecycle from program startup through the two-step document verification and registration preview, deferred ID generation upon approval, and name/ID selection workflows.
+This flowchart details the runtime lifecycle from program startup through the two-step document verification and registration preview, deferred ID generation upon approval, and name/ID selection workflows.
 
 ```mermaid
 flowchart TD
-    START(["Program Start: Main"]) --> INIT["Instantiate AdmissionService: Initialize 31 courses, load students.csv, sync ID sequence & recalculate slots"]
+    START(["Program Start: Main"]) --> INIT["Instantiate AdmissionService: Initialize 31 courses, seed sample students & recalculate slots"]
     INIT --> MENU{"Display Main Menu and Read Choice 1-8"}
 
     MENU -->|"Invalid Input"| ERR["Display Error Message"] --> MENU
@@ -71,14 +63,14 @@ flowchart TD
     EVAL -->|"Slots <= 0"| STAT_WAIT["Status = WAITLISTED (ID = null)"]
     EVAL -->|"Eligible & Complete"| STAT_APP["Status = APPROVED, Increment Slots, Assign UMAK-YYYY-XXXX ID"]
 
-    STAT_PEN & STAT_REJ & STAT_WAIT & STAT_APP --> SAVE_NEW["Save Student Record to students.csv"] --> MENU
+    STAT_PEN & STAT_REJ & STAT_WAIT & STAT_APP --> SAVE_NEW["Store Student Record in Memory List"] --> MENU
 
     MENU -->|"2: View All"| VIEW["Fetch all students and print formatted summaries"] --> MENU
     MENU -->|"3: Search"| SEARCH["Search by ID or Name keyword and display matches"] --> MENU
-    MENU -->|"4: Update Status"| UPDATE["Find Student by ID or Name list, verify slots, assign ID if newly APPROVED & save CSV"] --> MENU
-    MENU -->|"5: Delete Record"| DELETE["Find Student by ID or Name list, confirm, free slot if APPROVED & save CSV"] --> MENU
+    MENU -->|"4: Update Status"| UPDATE["Find Student by ID or Name list, verify slots, assign ID if newly APPROVED"] --> MENU
+    MENU -->|"5: Delete Record"| DELETE["Find Student by ID or Name list, confirm, free slot if APPROVED & remove from list"] --> MENU
     MENU -->|"6: Course Summary"| SUMMARY["Group by College and display remaining slots & min GWA"] --> MENU
-    MENU -->|"7: Reports"| REPORT["Calculate totals, counts and yield rate; optional CSV export"] --> MENU
+    MENU -->|"7: Reports"| REPORT["Calculate totals, counts, yield rate & per-course approved breakdown"] --> MENU
     MENU -->|"8: Exit"| EXIT(["Close Reader and Terminate"])
 ```
 
@@ -151,6 +143,15 @@ BEGIN CLASS Main
         END LOOP
     END FUNCTION
 
+    FUNCTION readRequiredText(input, prompt)
+        LOOP FOREVER
+            PRINT prompt
+            READ text = trimmed line from input
+            IF text IS NOT BLANK THEN RETURN text
+            PRINT "[!] This field is required."
+        END LOOP
+    END FUNCTION
+
     PROCEDURE pause(input)
         PRINT DIVIDER and "Press Enter to continue..."
         READ line from input
@@ -203,9 +204,9 @@ BEGIN CLASS Main
                     // Step 2: Profile & Course
                     CALL clearScreen()
                     READ age = readIntInRange(input, "Age (1-100): ", 1, 100)
-                    PROMPT address
+                    READ address = readRequiredText(input, "Complete Address: ")
                     PROMPT AND VALIDATE contact using isValidContact()
-                    PROMPT prevSchool
+                    READ prevSchool = readRequiredText(input, "Previous School: ")
                     READ yearChoice = readIntInRange(input, "Enter choice: ", 1, 4)
                     DISPLAY colleges from service.getAllColleges() AND read collegeIndex
                     DISPLAY courses for selectedCollege with Min GWA AND read courseIndex
@@ -214,9 +215,12 @@ BEGIN CLASS Main
                     // Application Preview
                     FETCH req = service.getCourseRequirement(courseApplied)
                     FETCH remainingSlots = service.getCourseSummary().getOrDefault(courseApplied, 0)
-                    DISPLAY Application Preview & predicted Result (PENDING / REJECTED / WAITLISTED / APPROVED)
-                    PROMPT "Submit application? (y/n): "
-                    IF confirmApplication NOT EQUALS "y" (ignore case) THEN
+                    SET hasToFollow = toFollowDocs IS NOT EMPTY
+                    DISPLAY Application Preview & predicted Result via service.predictStatus(courseApplied, gwa, hasToFollow)
+                    IF Checker.confirm(input, "Submit application? (y/n): ") IS TRUE THEN
+                        CALL saved = service.registerNewStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, hasToFollow)
+                        DISPLAY "[OK] Application submitted.", Status, and ID
+                    ELSE
                         PRINT "Application cancelled."
                     END IF
                     CALL pause(input)
@@ -257,7 +261,7 @@ BEGIN CLASS Main
                             PRINT "[OK] Status updated."
                             IF newStatus == "APPROVED" AND studentID IS NOT NULL THEN PRINT New ID
                         ELSE
-                            PRINT "[!] Update failed. Check status or slots."
+                            PRINT "[!] Update failed. Use a valid status and check slots."
                         END IF
                     END IF
                     CALL pause(input)
@@ -268,10 +272,9 @@ BEGIN CLASS Main
                     IF studentToDelete IS NULL THEN
                         PRINT "Student not found."
                     ELSE
-                        DISPLAY student details AND PROMPT "Confirm deletion? (y/n): "
-                        IF confirmDelete EQUALS "y" (ignore case) THEN
-                            SET targetKey = studentID if not null else fullName
-                            CALL service.deleteStudent(targetKey)
+                        DISPLAY student details
+                        IF Checker.confirm(input, "Confirm deletion? (y/n): ") IS TRUE THEN
+                            CALL service.deleteStudent(studentToDelete)
                             PRINT "[OK] Record deleted."
                         ELSE
                             PRINT "Deletion cancelled."
@@ -344,14 +347,11 @@ BEGIN CLASS AdmissionService
     PRIVATE courseSlots = NEW Map<String, Integer>
     PRIVATE courseTakenSlots = NEW Map<String, Integer>
     PRIVATE rawIDSequence = 1
-    PRIVATE CONSTANT STUDENT_CSV = "students.csv"
+    PRIVATE CONSTANT VALID_STATUSES = ["APPROVED", "PENDING", "REJECTED", "WAITLISTED"]
 
     CONSTRUCTOR AdmissionService()
         CALL initializeCourses()
-        CALL loadStudentsFromCSV()
-        IF students IS EMPTY THEN
-            CALL createSampleStudents()
-        END IF
+        CALL createSampleStudents()
         CALL recalculateSlotCounts()
     END CONSTRUCTOR
 
@@ -385,24 +385,27 @@ BEGIN CLASS AdmissionService
 
     PRIVATE PROCEDURE createSampleStudents()
         CALL registerPreloadedStudent(...) for 9 sample applicants
-        CALL saveStudentsToCSV()
     END PROCEDURE
 
-    FUNCTION registerNewStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, isPreloaded)
+    FUNCTION predictStatus(courseApplied, gwa, hasToFollowDocs)
         GET req = courseRequirements.get(courseApplied)
+        IF req IS NULL THEN RETURN "PENDING"
+        ELSE IF gwa < 75.0 THEN RETURN "REJECTED"
+        ELSE IF gwa < req.minGWA THEN RETURN "PENDING"
+        ELSE IF courseTakenSlots.get(courseApplied) >= courseSlots.get(courseApplied) THEN RETURN "WAITLISTED"
+        ELSE IF hasToFollowDocs IS TRUE THEN RETURN "PENDING"
+        RETURN "APPROVED"
+    END FUNCTION
+
+    FUNCTION registerNewStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, hasToFollowDocs)
+        RETURN createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, hasToFollowDocs)
+    END FUNCTION
+
+    PRIVATE FUNCTION createStudent(fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, hasToFollowDocs)
+        SET status = predictStatus(courseApplied, gwa, hasToFollowDocs)
         SET studentID = NULL
 
-        // Automated Status & ID Evaluation Logic (ID assigned only when APPROVED)
-        IF req IS NULL THEN
-            SET status = "PENDING"
-        ELSE IF gwa < 75.0 THEN
-            SET status = "REJECTED"
-        ELSE IF gwa < req.minGWA THEN
-            SET status = "PENDING"
-        ELSE IF courseTakenSlots.get(courseApplied) >= courseSlots.get(courseApplied) THEN
-            SET status = "WAITLISTED"
-        ELSE
-            SET status = "APPROVED"
+        IF status == "APPROVED" THEN
             INCREMENT courseTakenSlots for courseApplied by 1
             SET studentID = "UMAK-" + CurrentYear + "-" + ZERO_PAD(rawIDSequence++, 4)
         END IF
@@ -410,7 +413,6 @@ BEGIN CLASS AdmissionService
         CREATE newStudent = NEW Student(studentID, fullName, courseApplied)
         SET newStudent attributes (status, age, address, contact, prevSchool, gwa, yearLevel, dateAdmitted = TODAY)
         ADD newStudent TO students
-        CALL saveStudentsToCSV()
         RETURN newStudent
     END FUNCTION
 
@@ -440,7 +442,7 @@ BEGIN CLASS AdmissionService
     END FUNCTION
 
     FUNCTION updateStudentStatus(student, newStatus)
-        IF student IS NULL THEN RETURN FALSE
+        IF student IS NULL OR newStatus NOT IN VALID_STATUSES THEN RETURN FALSE
         SET oldStatus = student.status
         SET course = student.courseApplied
         GET req = courseRequirements.get(course)
@@ -459,21 +461,19 @@ BEGIN CLASS AdmissionService
         END IF
 
         SET student.status = newStatus
-        CALL saveStudentsToCSV()
         RETURN TRUE
     END FUNCTION
 
     FUNCTION deleteStudent(id)
-        GET student = searchByID(id)
-        IF student IS NOT NULL THEN
-            IF student.status == "APPROVED" THEN
-                DECREMENT courseTakenSlots for student.courseApplied by 1
-            END IF
-            REMOVE student FROM students
-            CALL saveStudentsToCSV()
-            RETURN TRUE
+        RETURN deleteStudent(searchByID(id))
+    END FUNCTION
+
+    FUNCTION deleteStudent(student)
+        IF student IS NULL OR students.remove(student) IS FALSE THEN RETURN FALSE
+        IF student.status == "APPROVED" THEN
+            DECREMENT courseTakenSlots for student.courseApplied by 1
         END IF
-        RETURN FALSE
+        RETURN TRUE
     END FUNCTION
 
     FUNCTION getCourseSummary()
@@ -488,14 +488,6 @@ BEGIN CLASS AdmissionService
         COUNT total, approved, pending, rejected, waitlisted, and approved per course
         CALCULATE yieldRate = (total == 0) ? 0 : (approved / total) * 100
         DISPLAY formatted report summary and course breakdown
-        CALL promptExport(total, approved, pending, rejected, waitlisted, yieldRate)
-    END PROCEDURE
-
-    PROCEDURE promptExport(total, approved, pending, rejected, waitlisted, yieldRate)
-        PROMPT "Press [E] to export this report to CSV, or press Enter to skip"
-        IF choice EQUALS "E" (ignore case) THEN
-            WRITE metrics to "Admission_Report.csv"
-        END IF
     END PROCEDURE
 
     PRIVATE PROCEDURE recalculateSlotCounts()
@@ -505,28 +497,6 @@ BEGIN CLASS AdmissionService
                 INCREMENT courseTakenSlots for s.courseApplied by 1
             END IF
         END FOR
-    END PROCEDURE
-
-    PRIVATE PROCEDURE saveStudentsToCSV()
-        OPEN PrintWriter on STUDENT_CSV
-        WRITE CSV header row
-        FOR EACH s IN students
-            WRITE formatted CSV row for s
-        END FOR
-    END PROCEDURE
-
-    PRIVATE PROCEDURE loadStudentsFromCSV()
-        IF STUDENT_CSV DOES NOT EXIST THEN RETURN
-        OPEN BufferedReader on STUDENT_CSV
-        SKIP header row
-        WHILE line = br.readLine() IS NOT NULL
-            PARSE CSV columns (handling quoted commas)
-            SET idToStore = NULL if studentID is blank else studentID
-            RECONSTRUCT Student object and ADD to students
-            IF studentID IS NOT BLANK THEN
-                EXTRACT sequence number from studentID and UPDATE rawIDSequence if seq >= rawIDSequence
-            END IF
-        END WHILE
     END PROCEDURE
 END CLASS
 ```

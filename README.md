@@ -9,7 +9,7 @@
 
 ![Java](https://img.shields.io/badge/Java-17%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Type](https://img.shields.io/badge/App-Console%20%2F%20CLI-0b0e14?style=for-the-badge&logo=gnubash&logoColor=white)
-![Storage](https://img.shields.io/badge/Storage-CSV-2ea44f?style=for-the-badge&logo=files&logoColor=white)
+![Storage](https://img.shields.io/badge/Storage-In--Memory-2ea44f?style=for-the-badge&logo=java&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/Dependencies-None-0366d6?style=for-the-badge)
 ![Colleges](https://img.shields.io/badge/Colleges-11-8957e5?style=for-the-badge)
 ![Programs](https://img.shields.io/badge/Programs-31-d73a49?style=for-the-badge)
@@ -20,8 +20,8 @@
 [Features](#features) ·
 [How it decides](#how-admission-decisions-are-made) ·
 [Quick start](#quick-start) ·
-[Architecture](#architecture) ·
 [Screenshots](#screenshots) ·
+[Architecture](#architecture)
 
 <br>
 
@@ -46,7 +46,7 @@ Manual admission processing tends to suffer from slow document verification, hum
 1. **Verifies** mandatory and optional admission requirements *before* an application can proceed.
 2. **Evaluates** each applicant automatically against General Weighted Average (GWA) thresholds and real-time course capacity.
 3. **Issues** an official Student ID (`UMAK-YYYY-XXXX`) *only* when an applicant is approved.
-4. **Persists** every record to CSV (`students.csv`) so nothing is lost between runs.
+4. **Manages** all applicant records and course capacities dynamically in memory during runtime using Java Collections (`ArrayList` and `HashMap`).
 
 ## Objectives
 
@@ -54,9 +54,9 @@ Manual admission processing tends to suffer from slow document verification, hum
 |---|---|
 | **Enforce document verification** | A two-step workflow separates mandatory `[REQ]` documents from to-follow `[OPT]` documents. |
 | **Automate admission evaluation** | Applicants are classified as `APPROVED`, `PENDING`, `WAITLISTED`, or `REJECTED` from GWA, documents, and slots. |
-| **Centralize student records** | Register, view, search (ID or name), update, and delete, all backed by `students.csv`. |
+| **Centralize student records** | Register, view, search (ID or name), update, and delete records in memory. |
 | **Manage real-time capacity** | Total and remaining slots tracked across 11 colleges and 31 programs. |
-| **Generate actionable reports** | Enrollment stats, acceptance rate, and per-course breakdowns, exportable to `Admission_Report.csv`. |
+| **Generate actionable reports** | Enrollment stats, acceptance rate, status counts, and per-course breakdowns. |
 
 ---
 
@@ -70,8 +70,8 @@ Manual admission processing tends to suffer from slow document verification, hum
 | **4** | **Update Student Status** | Find by ID or name (numbered pick-list for multiple matches). Approving assigns an ID and takes a slot; leaving `APPROVED` frees it. |
 | **5** | **Delete Student Record** | Find by ID or name, confirm, and remove. An approved student's slot is released automatically. |
 | **6** | **Course Summary** | Slots left (or `FULL`) and minimum GWA for every program, grouped by college. |
-| **7** | **Admission Reports** | Totals, acceptance rate, status counts, per-course breakdown, with optional `Admission_Report.csv` export. |
-| **8** | **Auto-persistence** | Loads `students.csv` on startup, re-syncs the ID counter, seeds sample applicants when no file exists, and saves on every change. |
+| **7** | **Admission Reports** | Totals, acceptance rate, status counts, and per-course approved breakdown. |
+| **8** | **Preloaded Sample Data** | Seeds 9 sample applicants on startup and synchronizes taken slot counts automatically. |
 
 <details>
 <summary><b>Registration details (click to expand)</b></summary>
@@ -128,7 +128,7 @@ flowchart TD
 
 ```text
 UMAK-2026-0001
-  |     |    +-- 4-digit sequence (zero-padded, resumes from the highest ID in students.csv)
+  |     |    +-- 4-digit sequence (zero-padded, auto-incremented per approved student)
   |     +------- admission year (taken from the system date)
   +------------- university prefix
 ```
@@ -155,7 +155,7 @@ java Main
 
 > **Tip:** The UI uses ANSI escape codes to clear the screen. Use a real terminal (Windows Terminal, PowerShell, macOS Terminal, any Linux shell). Some IDE consoles print the codes as raw text.
 
-On first launch with no `students.csv`, the system seeds sample applicants so every module has something to show.
+On launch, the system seeds sample applicants so every module has data to demonstrate right away.
 
 ---
 
@@ -180,38 +180,18 @@ On first launch with no `students.csv`, the system seeds sample applicants so ev
 
 ---
 
-## Data Files
-
-| File | Purpose |
-|---|---|
-| `students.csv` | Persistent student database, auto-loaded on startup and saved after every change. |
-| `Admission_Report.csv` | Optional analytics export generated from the Reports module (press **E**). |
-
-<details>
-<summary><b>students.csv columns</b></summary>
-
-```text
-studentID, fullName, age, address, contact, prevSchool, courseApplied, gwa, yearLevel, status, dateAdmitted
-```
-
-`yearLevel` is one of `FIRST_YEAR` … `FOURTH_YEAR`; `status` is one of `APPROVED`, `PENDING`, `REJECTED`, `WAITLISTED`.
-
-</details>
-
----
-
 ## Java Concepts Used
 
 | Concept | Where & how |
 |---|---|
 | **Encapsulation** | Private fields with public getters/setters in `Student`, `CourseRequirement`, `AdmissionService`. |
-| **Method overloading** | `updateStudentStatus` and `registerNewStudent` each have ID-based/object-based variants in `AdmissionService`. |
-| **Separation of concerns** | UI (`Main`), business logic + persistence (`AdmissionService`), models (`Student`, `CourseRequirement`), constants (`College`, `YearLevel`). |
+| **Method overloading** | `updateStudentStatus`, `deleteStudent`, and `registerNewStudent` each have ID-based/object-based variants in `AdmissionService`. |
+| **Separation of concerns** | UI (`Main`), business logic (`AdmissionService`), models (`Student`, `CourseRequirement`), constants (`College`, `YearLevel`). |
 | **Enums** | `College` and `YearLevel` carry custom fields (`fullName`, `displayName`) for type-safe categories. |
 | **Collections** | `ArrayList` for students, colleges and search results; `HashMap` for O(1) course rules, capacities, and taken-slot counters. |
-| **File I/O** | `BufferedReader`/`FileReader` and `PrintWriter`/`FileWriter` in `try-with-resources` for `students.csv` and `Admission_Report.csv`. |
-| **Regex & strings** | Name (`^[a-zA-Z\s'-]+$`) and contact (`^09\d{9}$`) validation, quote-aware CSV splitting, `String.format` zero-padding, `StringBuilder`. |
-| **Exception handling** | `NumberFormatException` for bad numeric input, `IOException` for file operations. |
+| **Console I/O** | `BufferedReader` and `InputStreamReader` for structured terminal input across menus and prompts. |
+| **Regex & strings** | Name (`^[a-zA-Z\s'-]+$`) and contact (`^09\d{9}$`) validation, `String.format` zero-padding, `StringBuilder`. |
+| **Exception handling** | `NumberFormatException` validation loops for bad numeric input. |
 | **Java Time API** | `LocalDate` for admission dates and the year in generated Student IDs. |
 
 ---
@@ -224,8 +204,8 @@ flowchart LR
         MAIN["Main.java<br/>menus · 2-step registration · prompts"]
         CHK["Checker.java<br/>strict y/n confirmations"]
     end
-    subgraph LOGIC ["Business Logic"]
-        SVC["AdmissionService.java<br/>evaluation · ID generation · CSV I/O"]
+    subgraph LOGIC ["Business Logic & Memory Storage"]
+        SVC["AdmissionService.java<br/>evaluation · ID generation · ArrayList & HashMap"]
     end
     subgraph MODEL ["Models"]
         STU["Student"]
@@ -233,33 +213,25 @@ flowchart LR
         COL["College (enum)"]
         YR["YearLevel (enum)"]
     end
-    subgraph DATA ["Storage"]
-        DB[("students.csv")]
-        REP[("Admission_Report.csv")]
-    end
 
     MAIN --> SVC
     MAIN -.-> CHK
     SVC --> STU & REQ
     REQ --> COL
     STU --> YR
-    SVC <--> DB
-    SVC --> REP
 ```
 
 ```text
 SchoolAdmission-JavaBased-System/
-├── Main.java                  # Entry point, CLI menus, 2-step registration & validation
-├── AdmissionService.java      # GWA/slot evaluation, deferred ID generation, CSV I/O, reports
-├── Student.java               # Applicant model (nullable ID, status, profile)
-├── CourseRequirement.java     # Course <-> college, minimum GWA, max slots
-├── College.java               # Enum: the 11 UMak colleges
-├── YearLevel.java             # Enum: 1st to 4th year
-├── Checker.java               # Strict y/n confirmation + boolean input helper
-├── students.csv               # Student database
-├── Admission_Report.csv       # Exported report
+├── Main.java                                 # Entry point, CLI menus, 2-step registration & validation
+├── AdmissionService.java                     # GWA/slot evaluation, deferred ID generation, in-memory storage, reports
+├── Student.java                              # Applicant model (nullable ID, status, profile)
+├── CourseRequirement.java                    # Course <-> college, minimum GWA, max slots
+├── College.java                              # Enum: the 11 UMak colleges
+├── YearLevel.java                            # Enum: 1st to 4th year
+├── Checker.java                              # Strict y/n confirmation + boolean input helper
 ├── System Flowcharts and Pseudocode.md
-└── screenshots/               # Terminal captures used below
+└── screenshots/                              # Terminal captures used below
 ```
 
 More diagrams and per-file pseudocode live in [`System Flowcharts and Pseudocode.md`](System%20Flowcharts%20and%20Pseudocode.md).
@@ -268,7 +240,7 @@ More diagrams and per-file pseudocode live in [`System Flowcharts and Pseudocode
 
 ## Screenshots
 
-> All captures are real output from the program running against the bundled `students.csv`.
+> All captures are real output from the program running with the preloaded sample data.
 
 ### Main Menu
 <p align="center"><img src="screenshots/main_menu.png" alt="Main menu" width="528"></p>
@@ -304,7 +276,7 @@ More diagrams and per-file pseudocode live in [`System Flowcharts and Pseudocode
 
 <p align="center"><img src="screenshots/application_preview_submit.png" alt="Application preview submit" width="596"></p>
 
-On `y` the application is saved to `students.csv` and the outcome is shown. The ID appears only if the result is `APPROVED`.
+On `y` the application is stored in memory and the outcome is shown. The ID appears only if the result is `APPROVED`.
 
 <p align="center"><img src="screenshots/application_submitted.png" alt="Application submitted" width="596"></p>
 
@@ -356,11 +328,9 @@ Approving a student issues their ID on the spot. **Capacity guard:** a full cour
 <p align="center"><img src="screenshots/course_summary_part2.png" alt="Course Summary Part2" width="630"></p>
 <p align="center"><img src="screenshots/course_summary_part3.png" alt="Course Summary Part3" width="630"></p>
 
-### Admission Reports & Export
+### Admission Reports
 
 <p align="center"><img src="screenshots/reports.png" alt="Admission report" width="596"></p>
-
-<p align="center"><img src="screenshots/reports_export.png" alt="Report exported" width="604"></p>
 
 ### Exit
 <p align="center"><img src="screenshots/exit.png" alt="Exit screen" width="528"></p>
