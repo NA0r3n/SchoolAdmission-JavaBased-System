@@ -157,6 +157,16 @@ public class AdmissionService {
         return null;
     }
 
+    public List<Student> searchByCourse(String keyword) {
+        List<Student> results = new ArrayList<>();
+        for (Student s : students) {
+            if (s.getCourseApplied().toLowerCase().contains(keyword.toLowerCase())) {
+                results.add(s);
+            }
+        }
+        return results;
+    }
+
     public List<Student> searchByName(String keyword) {
         List<Student> results = new ArrayList<>();
         for (Student s : students) {
